@@ -1,8 +1,8 @@
 namespace DashboardMoto.Entities;
 
-class Motorbike
+class Motorbike(string name, string url, string price)
 {
-  public string? Url { get; set; }
-  public string? Name { get; set; }
-  public string? Price { get; set; }
+  public string? Url { get; set; } = url;
+  public string? Name { get; set; } = name;
+  public string? Price { get; set; } = price;
 }
