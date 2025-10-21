@@ -18,6 +18,15 @@ if (app.Environment.IsDevelopment())
 
 // ----------------- START: Selenium scraping -----------------
 var url = "https://www.autoscout24.it/lst-moto?sort=standard&desc=0&ustate=N%2CU&atype=B&cy=I&cat=&body=101&damaged_listing=exclude&source=homepage_search-mask";
+string paginaCompleta = "div.ListItem_wrapper__TxHWu";
+string linkModello = "span.ListItem_title_bold__iQJRq";
+string linkPrezzo = "p.Price_price__APlgs";
+string linkKm = "span[class^='VehicleDetailTable_item__']";
+string linkLocation = "span[class^='SellerInfo_address__leRMu']";
+string linkData = "span.SellerInfo_date";
+string linkFuelType = "span[class^='VehicleDetailTable_item__4n35N']";
+string linkGearBox = "span[class^='VehicleDetailTable_item__4n35N']";
+string linkHorsePower = "span[class^='VehicleDetailTable_item__4n35N']";
 
 // Configuro il servizio per nascondere la finestra console del chromedriver
 var service = ChromeDriverService.CreateDefaultService();
@@ -53,12 +62,12 @@ try
     // Aspetta che ci sia almeno 1 elemento con il selettore
     wait.Until(d =>
     {
-        var els = d.FindElements(By.CssSelector("div.ListItem_wrapper__TxHWu"));
+        var els = d.FindElements(By.CssSelector(paginaCompleta));
         return els != null && els.Count > 0;
     });
 
     // Ora prendi tutti i blocchi
-    var items = driver.FindElements(By.CssSelector("div.ListItem_wrapper__TxHWu"));
+    var items = driver.FindElements(By.CssSelector(paginaCompleta));
     int id = 0;
 
     foreach (var item in items)
@@ -66,14 +75,14 @@ try
     try
     {
         // Model / Titolo
-        var modelElem = item.FindElement(By.CssSelector("span.ListItem_title_bold__iQJRq"));
+        var modelElem = item.FindElement(By.CssSelector(linkModello));
         string model = modelElem.Text?.Trim() ?? "";
 
         // Prezzo
         double price = 0;
         try
         {
-            var priceElem = item.FindElement(By.CssSelector("p.Price_price__APlgs"));
+            var priceElem = item.FindElement(By.CssSelector(linkPrezzo));
             var priceText = priceElem.Text.Replace("€", "").Replace(".", "").Replace(",", "").Replace("-", "").Trim();
             double.TryParse(priceText, out price);
         }
@@ -83,7 +92,7 @@ try
         double mileage = 0;
         try
         {
-            var kmElem = item.FindElement(By.CssSelector("span[class^='VehicleDetailTable_item__']"));
+            var kmElem = item.FindElement(By.CssSelector(linkKm));
             var kmText = kmElem.Text.Replace("km", "").Replace(".", "").Trim();
             double.TryParse(kmText, out mileage);
         }
@@ -93,7 +102,7 @@ try
         string location = "";
         try
         {
-            var locElem = item.FindElement(By.CssSelector("span.SellerInfo_name__nR9JH"));
+            var locElem = item.FindElement(By.CssSelector(linkLocation));
             location = locElem.Text.Trim();
         }
         catch { }
@@ -102,7 +111,7 @@ try
         DateTime? date = null;
         try
         {
-            var dateElem = item.FindElement(By.CssSelector("span.SellerInfo_date"));
+            var dateElem = item.FindElement(By.CssSelector(linkData));
             date = DateTime.Parse(dateElem.Text.Trim());
         }
         catch { }
@@ -124,7 +133,7 @@ try
         string fuelType = null;
         try
         {
-            var fuelElem = item.FindElement(By.CssSelector("span[class^='VehicleDetailTable_item__4n35N']"));
+            var fuelElem = item.FindElement(By.CssSelector(linkFuelType));
             fuelType = fuelElem.Text.Trim();
         }
         catch { }
@@ -133,7 +142,7 @@ try
         string gearBox = null;
         try
         {
-            var gearElem = item.FindElement(By.CssSelector("span[class^='VehicleDetailTable_item__4n35N']"));
+            var gearElem = item.FindElement(By.CssSelector(linkGearBox));
             gearBox = gearElem.Text.Trim();
         }
         catch { }
@@ -142,7 +151,7 @@ try
         double horsePower = 0;
         try
         {
-            var hpElem = item.FindElement(By.CssSelector("span[class^='VehicleDetailTable_item__4n35N']"));
+            var hpElem = item.FindElement(By.CssSelector(linkHorsePower));
             var hpText = hpElem.Text.Replace("CV", "").Trim();
             double.TryParse(hpText, out horsePower);
         }

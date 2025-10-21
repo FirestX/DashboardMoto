@@ -10,7 +10,7 @@ class Motorbike(int id, double horsePower, string model, DateTime postDate, doub
   public Enum? GearBox { get; set; } = gearBox;
   public double MileageKm { get; set; } = mileageKm;
   public string Location { get; set; } = location;
-  public Enum Brand { get; set; } = brand;
+  public Enum? Brand { get; set; } = brand;
   public Enum? FuelType { get; set; } = fuelType;
   public int SellerId { get; set; } = sellerId;
 }
