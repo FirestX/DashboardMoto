@@ -1,7 +1,16 @@
 using DashboardMoto.Entities;
 using HtmlAgilityPack;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSwaggerGen(options =>
+    {
+      options.SwaggerDoc("v1", new OpenApiInfo
+      {
+        Title = "Dashboard Moto API",
+        Version = "v1"
+      });
+    });
 
 builder.Services.AddOpenApi();
 
@@ -18,8 +27,6 @@ var motrobikeBlockElement = document.DocumentNode.QuerySelectorAll("div.ListItem
 foreach (var element in motrobikeBlockElement)
 {
   var name = element.QuerySelector("span.ListItem_title_bold__iQJRq").InnerText;
-  var motorbike = new Motorbike(name);
-  motorbikes.Add(motorbike);
 }
 foreach (var motorbike in motorbikes)
 {
@@ -28,5 +35,11 @@ foreach (var motorbike in motorbikes)
 
 app.UseHttpsRedirection();
 
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dashboard Moto API V1");
+});
+ 
 app.Run();
 
