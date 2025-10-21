@@ -5,7 +5,7 @@ class Motorbike(int id, double horsePower, string model, DateTime postDate, doub
   public int Id { get; set; } = id;
   public double? HorsePower { get; set; } = horsePower;
   public string Model { get; set; } = model;
-  public DateTime PostDate { get; set; } = postDate;
+  public DateTime? PostDate { get; set; } = postDate;
   public double Price { get; set; } = price;
   public Enum? GearBox { get; set; } = gearBox;
   public double MileageKm { get; set; } = mileageKm;
