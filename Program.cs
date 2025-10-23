@@ -28,6 +28,7 @@ string linkHorsePower = "span[data-testid='VehicleDetails-speedometer']";
 string linkLocation = "span[class^='SellerInfo_address__leRMu']";
 string linkData = "span.SellerInfo_date";
 
+
 // Configuro il servizio per nascondere la finestra console del chromedriver
 var service = ChromeDriverService.CreateDefaultService();
 service.HideCommandPromptWindow = true;
@@ -77,6 +78,41 @@ try
         // Model / Titolo
         var modelElem = item.FindElement(By.CssSelector(linkModello));
         string model = modelElem.Text?.Trim() ?? "";
+        
+        // Brand
+        string brand = null;
+        // Provo a estrarre la marca dal modello (primo termine)
+        foreach (var lettere in model)
+        {
+            if (char.IsWhiteSpace(lettere))
+                break;
+            brand += lettere;
+        }
+        var brandMap = new Dictionary<string, string>
+        {
+            { "Aprilia", "Aprilia" },
+            { "BMW", "BMW" },
+            { "Ducati", "Ducati" },
+            { "HarleyDavidson", "Harley-Davidson" },
+            { "Honda", "Honda" },
+            { "Kawasaki", "Kawasaki" },
+            { "KTM", "KTM" },
+            { "Suzuki", "Suzuki" },
+            { "Triumph", "Triumph" },
+            { "Yamaha", "Yamaha" },
+            { "MotoGuzzi", "Moto Guzzi" },
+            { "MvAgusta", "MV Agusta" },
+            { "Benelli", "Benelli" },
+            { "Piaggio", "Piaggio" },
+            { "Indian", "Indian" },
+            { "RoyalEnfield", "Royal Enfield" },
+            { "Other", "Other" }
+        };
+        Brand finalBrand = Brand.Other;
+        if (!string.IsNullOrEmpty(brand) && brandMap.TryGetValue(brand, out string parsedBrand))
+        {
+            finalBrand = Enum.TryParse<Brand>(parsedBrand.Replace(" ", ""), out Brand b) ? b : Brand.Other;
+        }
 
         // Prezzo
         double price = 0;
@@ -137,6 +173,17 @@ try
             fuelType = fuelElem.Text.Trim();
         }
         catch { }
+        var fuelTypeMap = new Dictionary<string, FuelType>
+        {
+            { "Benzina", FuelType.Gasoline },
+            { "Elettrica", FuelType.Electric },
+            { "Altro", FuelType.Other }
+        };
+        FuelType finalFuelType = FuelType.Gasoline;
+        if (!string.IsNullOrEmpty(fuelType) && fuelTypeMap.TryGetValue(fuelType, out FuelType parsedFuelType))
+        {
+            finalFuelType = parsedFuelType;
+        }
         
         // GearBox
         string gearBox = null;
@@ -146,32 +193,65 @@ try
             gearBox = gearElem.Text.Trim();
         }
         catch { }
+        var gearBoxMap = new Dictionary<string, GearBox>
+        {
+            { "Manuale", GearBox.Manual },
+            { "Automatico", GearBox.Automatic },
+            { "SemiAutomatico", GearBox.SemiAutomatic }
+        };
+
+        GearBox finalGearBox = GearBox.Manual;
+        if (!string.IsNullOrEmpty(gearBox) && gearBoxMap.TryGetValue(gearBox, out GearBox parsedGearBox))
+        {
+            finalGearBox = parsedGearBox;
+        }
         
-        //HP
-        double horsePower = 0;
+        // HP
+        double horsePowerValue = 0.0;
+
         try
         {
             var hpElem = item.FindElement(By.CssSelector(linkHorsePower));
-            var hpText = hpElem.Text.Replace("CV", "").Trim();
-            double.TryParse(hpText, out horsePower);
+            var hpText = hpElem.Text.Trim(); // es: "233 Kw (20 CV)"
+
+            // 1️⃣ Trova la parte tra "(" e "CV"
+            int start = hpText.IndexOf('(');
+            int end = hpText.IndexOf("CV");
+
+            if (start != -1 && end != -1 && end > start)
+            {
+                // Estrae la parte interna: "(20 " -> "20"
+                string insideParentheses = hpText.Substring(start + 1, end - start - 1).Trim();
+
+                // 2️⃣ Prende solo la parte fino al primo spazio (es: "20 CV" -> "20")
+                string numberPart = insideParentheses.Split(' ')[0];
+
+                // 3️⃣ Converte in double (usa InvariantCulture per evitare problemi con separatori)
+                if (double.TryParse(numberPart, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double hp))
+                {
+                    horsePowerValue = hp;
+                }
+            }
         }
-        catch {
+        catch
+        {
+            // Ignora o logga l’errore se serve
         }
         
-        Console.WriteLine($"Trovata moto: ID={id}, Model={model}, Price={price}€, Mileage={mileage}km, Location={location}, HorsePower={horsePower}CV, FuelType={fuelType}, GearBox={gearBox}, Posted on: {date}");
+        Console.WriteLine($"Trovata moto: ID={id}, Model={model}, Price={price}€, Mileage={mileage}km, Location={location}, HorsePower={horsePowerValue}CV, FuelType={fuelType}, GearBox={gearBox}, Posted on: {date}, Brand: {finalBrand}");
 
         // A questo punto possiamo costruire l'oggetto Motorbike
         motorbikes.Add(new Motorbike(
             id,
-            horsePower,               // HorsePower non disponibile
+            horsePowerValue,               // HorsePower non disponibile
             model,
             DateTime.Now,    // PostDate
             price,
-            null,            // GearBox
+            gearBox: finalGearBox,            // GearBox
             mileage,
             location,
-            null,            // Brand
-            null,            // FuelType
+            brand: finalBrand,            // Brand
+            fuelType: finalFuelType,            // FuelType
             0                // SellerId
         ));
     }
