@@ -1,16 +1,17 @@
 ﻿using DashboardMoto.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace DashboardMoto.Persistence;
 
 public class MotoRepository(AppDbContext dbContext) : IMotoRepository
 {
-  public void Create(Motorbike motorbike)
+  public async Task Create(Motorbike motorbike)
   {
     dbContext.Motorbikes.Add(motorbike);
-    dbContext.SaveChanges();
+    await dbContext.SaveChangesAsync();
   }
-  public IEnumerable<Motorbike> GetAll()
+  public async Task<List<Motorbike>> GetAll()
   {
-    return dbContext.Motorbikes.AsEnumerable();
+    return await dbContext.Motorbikes.ToListAsync();
   }
 }

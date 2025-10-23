@@ -46,9 +46,9 @@ app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dashboard Moto API V1");
 });
-app.MapGet("/motorbikes", (IMotoRepository repository) =>
+app.MapGet("/motorbikes", async (IMotoRepository repository) =>
 {
-    return repository.GetAll();
+    return await repository.GetAll();
 });
 app.Run();
 

@@ -4,6 +4,6 @@ namespace DashboardMoto.Persistence;
 
 public interface IMotoRepository
 {
-    public void Create(Motorbike motorbike);
-    public IEnumerable<Motorbike> GetAll();
+    public Task Create(Motorbike motorbike);
+    public Task<List<Motorbike>> GetAll();
 }
