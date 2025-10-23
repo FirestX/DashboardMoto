@@ -6,10 +6,11 @@ public class MotoRepository(AppDbContext dbContext) : IMotoRepository
 {
   public void Create(Motorbike motorbike)
   {
-    throw new NotImplementedException();
+    dbContext.Motorbikes.Add(motorbike);
+    dbContext.SaveChanges();
   }
   public IEnumerable<Motorbike> GetAll()
   {
-    throw new NotImplementedException();
+    return dbContext.Motorbikes.AsEnumerable();
   }
 }
