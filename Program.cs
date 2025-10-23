@@ -19,6 +19,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddScoped<IMotoRepository, MotoRepository>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -44,6 +46,9 @@ app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dashboard Moto API V1");
 });
- 
+app.MapGet("/motorbikes", (IMotoRepository repository) =>
+{
+    return repository.GetAll();
+});
 app.Run();
 
