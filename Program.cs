@@ -21,12 +21,12 @@ var url = "https://www.autoscout24.it/lst-moto?sort=standard&desc=0&ustate=N%2CU
 string paginaCompleta = "div.ListItem_wrapper__TxHWu";
 string linkModello = "span.ListItem_title_bold__iQJRq";
 string linkPrezzo = "p.Price_price__APlgs";
-string linkKm = "span[class^='VehicleDetailTable_item__']";
+string linkKm = "span[data-testid='VehicleDetails-mileage_road']";
+string linkFuelType = "span[data-testid='VehicleDetails-gas_pump']";
+string linkGearBox = "span[data-testid='VehicleDetails-gearbox']";
+string linkHorsePower = "span[data-testid='VehicleDetails-speedometer']";
 string linkLocation = "span[class^='SellerInfo_address__leRMu']";
 string linkData = "span.SellerInfo_date";
-string linkFuelType = "span[class^='VehicleDetailTable_item__4n35N']";
-string linkGearBox = "span[class^='VehicleDetailTable_item__4n35N']";
-string linkHorsePower = "span[class^='VehicleDetailTable_item__4n35N']";
 
 // Configuro il servizio per nascondere la finestra console del chromedriver
 var service = ChromeDriverService.CreateDefaultService();
@@ -157,6 +157,8 @@ try
         }
         catch {
         }
+        
+        Console.WriteLine($"Trovata moto: ID={id}, Model={model}, Price={price}€, Mileage={mileage}km, Location={location}, HorsePower={horsePower}CV, FuelType={fuelType}, GearBox={gearBox}, Posted on: {date}");
 
         // A questo punto possiamo costruire l'oggetto Motorbike
         motorbikes.Add(new Motorbike(
@@ -191,7 +193,9 @@ catch (Exception ex)
     Console.WriteLine("Errore durante lo scraping: " + ex.Message);
 }
 // ----------------- END: Selenium scraping -----------------
-
+Console.WriteLine();
+Console.WriteLine();
+Console.WriteLine();
 // Stampa i risultati trovati
 foreach (var m in motorbikes)
 {
