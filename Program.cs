@@ -1,5 +1,7 @@
 using DashboardMoto.Entities;
+using DashboardMoto.Persistence;
 using HtmlAgilityPack;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +15,9 @@ builder.Services.AddSwaggerGen(options =>
     });
 
 builder.Services.AddOpenApi();
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
 
@@ -30,7 +35,6 @@ foreach (var element in motrobikeBlockElement)
 }
 foreach (var motorbike in motorbikes)
 {
-  Console.WriteLine(motorbike.Name);
 }
 
 app.UseHttpsRedirection();
