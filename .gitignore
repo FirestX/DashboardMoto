@@ -1,3 +1,4 @@
-bin/
+﻿bin/
 obj/
 appsettings.json
+.editorconfig
