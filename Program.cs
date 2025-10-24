@@ -1,9 +1,25 @@
 using DashboardMoto.Entities;
+using DashboardMoto.Persistence;
 using HtmlAgilityPack;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSwaggerGen(options =>
+    {
+      options.SwaggerDoc("v1", new OpenApiInfo
+      {
+        Title = "Dashboard Moto API",
+        Version = "v1"
+      });
+    });
 
 builder.Services.AddOpenApi();
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<IMotoRepository, MotoRepository>();
 
 var app = builder.Build();
 
@@ -18,15 +34,21 @@ var motrobikeBlockElement = document.DocumentNode.QuerySelectorAll("div.ListItem
 foreach (var element in motrobikeBlockElement)
 {
   var name = element.QuerySelector("span.ListItem_title_bold__iQJRq").InnerText;
-  var motorbike = new Motorbike(name);
-  motorbikes.Add(motorbike);
 }
 foreach (var motorbike in motorbikes)
 {
-  Console.WriteLine(motorbike.Name);
 }
 
 app.UseHttpsRedirection();
 
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dashboard Moto API V1");
+});
+app.MapGet("/motorbikes", async (IMotoRepository repository) =>
+{
+    return await repository.GetAll();
+});
 app.Run();
 
