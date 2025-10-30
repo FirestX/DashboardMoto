@@ -161,7 +161,7 @@ try
 
         // URL → Id generico
         //string link = "";
-        id++;
+        //id++;
         /*try
         {
             var linkElem = item.FindElement(By.CssSelector("a.ListItem_title_new_design__QIU2b"));
