@@ -1,7 +1,10 @@
-using DashboardMoto.Entities;
+﻿using DashboardMoto.Entities;
 using DashboardMoto.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Support.UI;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSwaggerGen(options =>
@@ -265,12 +268,12 @@ try
             model,
             DateTime.Now,    // PostDate
             price,
-            gearBox: finalGearBox,            // GearBox
             mileage,
             location,
+			0,
             brand: finalBrand,            // Brand
             fuelType: finalFuelType,            // FuelType
-            0                // SellerId
+			gearBox: finalGearBox           // GearBox
         ));
     }
     catch
