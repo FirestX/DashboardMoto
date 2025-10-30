@@ -1,13 +1,24 @@
 using DashboardMoto.Entities;
-using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.Support.UI;
-
-Console.OutputEncoding = System.Text.Encoding.UTF8;
+using DashboardMoto.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSwaggerGen(options =>
+    {
+      options.SwaggerDoc("v1", new OpenApiInfo
+      {
+        Title = "Dashboard Moto API",
+        Version = "v1"
+      });
+    });
 
 builder.Services.AddOpenApi();
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<IMotoRepository, MotoRepository>();
 
 var app = builder.Build();
 
@@ -291,4 +302,13 @@ foreach (var m in motorbikes)
 
 app.UseHttpsRedirection();
 
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dashboard Moto API V1");
+});
+app.MapGet("/motorbikes", async (IMotoRepository repository) =>
+{
+    return await repository.GetAll();
+});
 app.Run();
