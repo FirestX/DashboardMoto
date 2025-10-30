@@ -25,7 +25,7 @@ string linkKm = "span[data-testid='VehicleDetails-mileage_road']";
 string linkFuelType = "span[data-testid='VehicleDetails-gas_pump']";
 string linkGearBox = "span[data-testid='VehicleDetails-gearbox']";
 string linkHorsePower = "span[data-testid='VehicleDetails-speedometer']";
-string linkLocation = "span[class^='SellerInfo_address__leRMu']";
+string linkLocation = "span[data-testid='sellerinfo-address']";
 string linkData = "span.SellerInfo_date";
 
 
@@ -135,13 +135,21 @@ try
         catch { }
 
         // Location
-        string location = "";
+        string location = string.Empty;
+
         try
         {
-            var locElem = item.FindElement(By.CssSelector(linkLocation));
-            location = locElem.Text.Trim();
+            // Cerca direttamente per data-testid, più robusto di class
+            var locElem = driver.FindElement(By.CssSelector(linkLocation));
+            if (locElem != null)
+            {
+                location = locElem.Text.Trim();
+            }
         }
-        catch { }
+        catch (NoSuchElementException)
+        {
+            location = "";
+        }
         
         // PostDate: non disponibile, uso data corrente
         DateTime? date = null;
@@ -154,7 +162,7 @@ try
 
         // URL → Id generico
         //string link = "";
-        id++;
+       // id++;
         /*try
         {
             var linkElem = item.FindElement(By.CssSelector("a.ListItem_title_new_design__QIU2b"));
@@ -242,7 +250,7 @@ try
 
         // A questo punto possiamo costruire l'oggetto Motorbike
         motorbikes.Add(new Motorbike(
-            id,
+            0,
             horsePowerValue,               // HorsePower non disponibile
             model,
             DateTime.Now,    // PostDate
