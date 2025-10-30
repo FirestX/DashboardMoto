@@ -17,7 +17,7 @@ if (app.Environment.IsDevelopment())
 }
 
 // ----------------- START: Selenium scraping -----------------
-var url = "https://www.autoscout24.it/lst-moto?sort=standard&desc=0&ustate=N%2CU&atype=B&cy=I&cat=&body=101&damaged_listing=exclude&source=homepage_search-mask";
+var url = "https://www.autoscout24.it/lst-moto?sort=standard&desc=0&ustate=N%2CU&atype=B&cy=I&cat=&body=101&damaged_listing=exclude&source=detailpage_back-to-list&page=1&size=400";
 string paginaCompleta = "div.ListItem_wrapper__TxHWu";
 string linkModello = "span.ListItem_title_bold__iQJRq";
 string linkPrezzo = "p.Price_price__APlgs";
@@ -48,7 +48,6 @@ options.AddArgument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Appl
 // Opzione: se vuoi vedere cosa succede, commenta la riga headless sopra
 
 List<Motorbike> motorbikes = new();
-
 try
 {
     using var driver = new ChromeDriver(service, options);
@@ -162,7 +161,7 @@ try
 
         // URL → Id generico
         //string link = "";
-       // id++;
+        id++;
         /*try
         {
             var linkElem = item.FindElement(By.CssSelector("a.ListItem_title_new_design__QIU2b"));
@@ -246,11 +245,11 @@ try
             // Ignora o logga l’errore se serve
         }
         
-        Console.WriteLine($"Trovata moto: ID={id}, Model={model}, Price={price}€, Mileage={mileage}km, Location={location}, HorsePower={horsePowerValue}CV, FuelType={fuelType}, GearBox={gearBox}, Posted on: {date}, Brand: {finalBrand}");
+        //Console.WriteLine($"Trovata moto: ID={id}, Model={model}, Price={price}€, Mileage={mileage}km, Location={location}, HorsePower={horsePowerValue}CV, FuelType={fuelType}, GearBox={gearBox}, Posted on: {date}, Brand: {finalBrand}");
 
         // A questo punto possiamo costruire l'oggetto Motorbike
         motorbikes.Add(new Motorbike(
-            0,
+            id,
             horsePowerValue,               // HorsePower non disponibile
             model,
             DateTime.Now,    // PostDate
