@@ -1,4 +1,5 @@
-﻿using DashboardMoto.Entities;
+﻿using DashboardMoto;
+using DashboardMoto.Entities;
 using DashboardMoto.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -302,6 +303,16 @@ foreach (var m in motorbikes)
 {
     Console.WriteLine($"ID: {m.Id}, Model: {m.Model}, Price: {m.Price}€, Mileage: {m.MileageKm}km, Location: {m.Location}, Posted on: {m.PostDate}, HorsePower: {m.HorsePower}, GearBox: {m.GearBox}, Brand: {m.Brand}, FuelType: {m.FuelType}, SellerId: {m.SellerId}");
 }
+/* Salva nel database
+using (var scope = app.Services.CreateScope())
+{
+    var motoRepository = scope.ServiceProvider.GetRequiredService<IMotoRepository>();
+    var motoUtilities = new MotoUtilities(motoRepository);
+    await motoUtilities.PrintInDatabase(motorbikes);
+    Console.WriteLine();
+    Console.WriteLine("Dati salvati nel database.");
+}*/
+
 
 app.UseHttpsRedirection();
 
