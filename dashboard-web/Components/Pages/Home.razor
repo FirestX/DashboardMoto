@@ -1,7 +1,33 @@
 ﻿@page "/"
+@using Microsoft.AspNetCore.Mvc
+@using Models
+@using Services
+@inject IHttpClientFactory HttpClientFactory
+@rendermode InteractiveServer
 
-<PageTitle>Home</PageTitle>
+@if (Motorbikes is null)
+{
+    <p> Loading Motorbikes Data: </p>
+}
+else
+{
+    @foreach (var bike in Motorbikes)
+    {
+        <p>@bike.Model</p>
+    }
+}
 
-<h1>Hello, world!</h1>
-
-Welcome to your new app.
+@code {
+    [BindProperty] private IEnumerable<Motorbike> Motorbikes { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Motorbikes = await RequestService.GetMotorbikesRequest(HttpClientFactory);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+}

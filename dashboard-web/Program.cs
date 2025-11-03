@@ -8,6 +8,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddMudServices();
+builder.Services.AddHttpClient("DashboardAPI", client => client.BaseAddress = new Uri("http://localhost:5189"));
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
