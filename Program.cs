@@ -4,24 +4,29 @@ using DashboardMoto.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium;
-using OpenQA.Selenium.Support.UI;
+
+// -----------------------------------------------------------
+// CONFIGURAZIONE BASE DELL'APPLICAZIONE
+// -----------------------------------------------------------
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Swagger
 builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
     {
-      options.SwaggerDoc("v1", new OpenApiInfo
-      {
         Title = "Dashboard Moto API",
         Version = "v1"
-      });
     });
+});
 
+// OpenAPI e DB Context
 builder.Services.AddOpenApi();
-
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Repository moto
 builder.Services.AddScoped<IMotoRepository, MotoRepository>();
 
 var app = builder.Build();
@@ -31,298 +36,146 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-// ----------------- START: Selenium scraping -----------------
-var url = "https://www.autoscout24.it/lst-moto?sort=standard&desc=0&ustate=N%2CU&atype=B&cy=I&cat=&body=101&damaged_listing=exclude&source=detailpage_back-to-list&page=1&size=400";
-string paginaCompleta = "div.ListItem_wrapper__TxHWu";
-string linkModello = "span.ListItem_title_bold__iQJRq";
-string linkPrezzo = "p.Price_price__APlgs";
-string linkKm = "span[data-testid='VehicleDetails-mileage_road']";
-string linkFuelType = "span[data-testid='VehicleDetails-gas_pump']";
-string linkGearBox = "span[data-testid='VehicleDetails-gearbox']";
-string linkHorsePower = "span[data-testid='VehicleDetails-speedometer']";
-string linkLocation = "span[data-testid='sellerinfo-address']";
-string linkData = "span.SellerInfo_date";
-
-
-// Configuro il servizio per nascondere la finestra console del chromedriver
-var service = ChromeDriverService.CreateDefaultService();
-service.HideCommandPromptWindow = true;
-service.SuppressInitialDiagnosticInformation = true;
-
-// Opzioni: headless, user agent (importantissimo), disable gpu, no-sandbox
-var options = new ChromeOptions();
-options.AddArgument("--headless=new"); // usa "--headless=new" per versioni recenti di Chrome
-options.AddArgument("--disable-gpu");
-options.AddArgument("--no-sandbox");
-options.AddArgument("--disable-dev-shm-usage");
-options.AddArgument("--blink-settings=imagesEnabled=false"); // opzionale: non caricare immagini
-options.AddArgument("--window-size=1920,1080");
-// Imposta user-agent per sembrare un browser reale
-options.AddArgument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
-
-// Opzione: se vuoi vedere cosa succede, commenta la riga headless sopra
-
-List<Motorbike> motorbikes = new();
-try
-{
-    using var driver = new ChromeDriver(service, options);
-
-    // Naviga
-    driver.Navigate().GoToUrl(url);
-
-    // Aspetta che compaiano gli elementi (max 20s)
-    var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20));
-    wait.IgnoreExceptionTypes(typeof(NoSuchElementException));
-
-    // Aspetta che ci sia almeno 1 elemento con il selettore
-    wait.Until(d =>
-    {
-        var els = d.FindElements(By.CssSelector(paginaCompleta));
-        return els != null && els.Count > 0;
-    });
-
-    // Ora prendi tutti i blocchi
-    var items = driver.FindElements(By.CssSelector(paginaCompleta));
-    int id = 0;
-
-    foreach (var item in items)
-{
-    try
-    {
-        // Model / Titolo
-        var modelElem = item.FindElement(By.CssSelector(linkModello));
-        string model = modelElem.Text?.Trim() ?? "";
-        
-        // Brand
-        string brand = null;
-        // Provo a estrarre la marca dal modello (primo termine)
-        foreach (var lettere in model)
-        {
-            if (char.IsWhiteSpace(lettere))
-                break;
-            brand += lettere;
-        }
-        var brandMap = new Dictionary<string, string>
-        {
-            { "Aprilia", "Aprilia" },
-            { "BMW", "BMW" },
-            { "Ducati", "Ducati" },
-            { "HarleyDavidson", "Harley-Davidson" },
-            { "Honda", "Honda" },
-            { "Kawasaki", "Kawasaki" },
-            { "KTM", "KTM" },
-            { "Suzuki", "Suzuki" },
-            { "Triumph", "Triumph" },
-            { "Yamaha", "Yamaha" },
-            { "MotoGuzzi", "Moto Guzzi" },
-            { "MvAgusta", "MV Agusta" },
-            { "Benelli", "Benelli" },
-            { "Piaggio", "Piaggio" },
-            { "Indian", "Indian" },
-            { "RoyalEnfield", "Royal Enfield" },
-            { "Other", "Other" }
-        };
-        Brand finalBrand = Brand.Other;
-        if (!string.IsNullOrEmpty(brand) && brandMap.TryGetValue(brand, out string parsedBrand))
-        {
-            finalBrand = Enum.TryParse<Brand>(parsedBrand.Replace(" ", ""), out Brand b) ? b : Brand.Other;
-        }
-
-        // Prezzo
-        double price = 0;
-        try
-        {
-            var priceElem = item.FindElement(By.CssSelector(linkPrezzo));
-            var priceText = priceElem.Text.Replace("€", "").Replace(".", "").Replace(",", "").Replace("-", "").Trim();
-            double.TryParse(priceText, out price);
-        }
-        catch { }
-
-        // MileageKm
-        double mileage = 0;
-        try
-        {
-            var kmElem = item.FindElement(By.CssSelector(linkKm));
-            var kmText = kmElem.Text.Replace("km", "").Replace(".", "").Trim();
-            double.TryParse(kmText, out mileage);
-        }
-        catch { }
-
-        // Location
-        string location = string.Empty;
-
-        try
-        {
-            // Cerca direttamente per data-testid, più robusto di class
-            var locElem = driver.FindElement(By.CssSelector(linkLocation));
-            if (locElem != null)
-            {
-                location = locElem.Text.Trim();
-            }
-        }
-        catch (NoSuchElementException)
-        {
-            location = "";
-        }
-        
-        // PostDate: non disponibile, uso data corrente
-        DateTime? date = null;
-        try
-        {
-            var dateElem = item.FindElement(By.CssSelector(linkData));
-            date = DateTime.Parse(dateElem.Text.Trim());
-        }
-        catch { }
-
-        // URL → Id generico
-        //string link = "";
-        //id++;
-        /*try
-        {
-            var linkElem = item.FindElement(By.CssSelector("a.ListItem_title_new_design__QIU2b"));
-            link = linkElem.GetAttribute("href");
-            // prova a estrarre ID numerico da URL
-            var match = System.Text.RegularExpressions.Regex.Match(link, @"AS(\d+)");
-            if (match.Success) id = int.Parse(match.Groups[1].Value);
-        }
-        catch { }*/
-        
-        // FuelType 
-        string fuelType = null;
-        try
-        {
-            var fuelElem = item.FindElement(By.CssSelector(linkFuelType));
-            fuelType = fuelElem.Text.Trim();
-        }
-        catch { }
-        var fuelTypeMap = new Dictionary<string, FuelType>
-        {
-            { "Benzina", FuelType.Gasoline },
-            { "Elettrica", FuelType.Electric },
-            { "Altro", FuelType.Other }
-        };
-        FuelType finalFuelType = FuelType.Gasoline;
-        if (!string.IsNullOrEmpty(fuelType) && fuelTypeMap.TryGetValue(fuelType, out FuelType parsedFuelType))
-        {
-            finalFuelType = parsedFuelType;
-        }
-        
-        // GearBox
-        string gearBox = null;
-        try
-        {
-            var gearElem = item.FindElement(By.CssSelector(linkGearBox));
-            gearBox = gearElem.Text.Trim();
-        }
-        catch { }
-        var gearBoxMap = new Dictionary<string, GearBox>
-        {
-            { "Manuale", GearBox.Manual },
-            { "Automatico", GearBox.Automatic },
-            { "SemiAutomatico", GearBox.SemiAutomatic }
-        };
-
-        GearBox finalGearBox = GearBox.Manual;
-        if (!string.IsNullOrEmpty(gearBox) && gearBoxMap.TryGetValue(gearBox, out GearBox parsedGearBox))
-        {
-            finalGearBox = parsedGearBox;
-        }
-        
-        // HP
-        double horsePowerValue = 0.0;
-
-        try
-        {
-            var hpElem = item.FindElement(By.CssSelector(linkHorsePower));
-            var hpText = hpElem.Text.Trim(); // es: "233 Kw (20 CV)"
-
-            // 1️⃣ Trova la parte tra "(" e "CV"
-            int start = hpText.IndexOf('(');
-            int end = hpText.IndexOf("CV");
-
-            if (start != -1 && end != -1 && end > start)
-            {
-                // Estrae la parte interna: "(20 " -> "20"
-                string insideParentheses = hpText.Substring(start + 1, end - start - 1).Trim();
-
-                // 2️⃣ Prende solo la parte fino al primo spazio (es: "20 CV" -> "20")
-                string numberPart = insideParentheses.Split(' ')[0];
-
-                // 3️⃣ Converte in double (usa InvariantCulture per evitare problemi con separatori)
-                if (double.TryParse(numberPart, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double hp))
-                {
-                    horsePowerValue = hp;
-                }
-            }
-        }
-        catch
-        {
-            // Ignora o logga l’errore se serve
-        }
-        
-        //Console.WriteLine($"Trovata moto: ID={id}, Model={model}, Price={price}€, Mileage={mileage}km, Location={location}, HorsePower={horsePowerValue}CV, FuelType={fuelType}, GearBox={gearBox}, Posted on: {date}, Brand: {finalBrand}");
-
-        // A questo punto possiamo costruire l'oggetto Motorbike
-        motorbikes.Add(new Motorbike(
-            id,
-            horsePowerValue,               // HorsePower non disponibile
-            model,
-            DateTime.Now,    // PostDate
-            price,
-            mileage,
-            location,
-			0,
-            brand: finalBrand,            // Brand
-            fuelType: finalFuelType,            // FuelType
-			gearBox: finalGearBox           // GearBox
-        ));
-    }
-    catch
-    {
-        // Salta eventuali blocchi vuoti
-    }
-}
-
-    // Debug: se non trovi elementi, salva page source su file per ispezionare
-    if (motorbikes.Count == 0)
-    {
-        System.IO.File.WriteAllText("pagesource.html", driver.PageSource);
-        Console.WriteLine("Nessun elemento trovato: ho salvato pagesource.html nella cartella del progetto.");
-    }
-}
-catch (Exception ex)
-{
-    Console.WriteLine("Errore durante lo scraping: " + ex.Message);
-}
-// ----------------- END: Selenium scraping -----------------
-Console.WriteLine();
-Console.WriteLine();
-Console.WriteLine();
-// Stampa i risultati trovati
-foreach (var m in motorbikes)
-{
-    Console.WriteLine($"ID: {m.Id}, Model: {m.Model}, Price: {m.Price}€, Mileage: {m.MileageKm}km, Location: {m.Location}, Posted on: {m.PostDate}, HorsePower: {m.HorsePower}, GearBox: {m.GearBox}, Brand: {m.Brand}, FuelType: {m.FuelType}, SellerId: {m.SellerId}");
-}
-/* Salva nel database
-using (var scope = app.Services.CreateScope())
-{
-    var motoRepository = scope.ServiceProvider.GetRequiredService<IMotoRepository>();
-    var motoUtilities = new MotoUtilities(motoRepository);
-    await motoUtilities.PrintInDatabase(motorbikes);
-    Console.WriteLine();
-    Console.WriteLine("Dati salvati nel database.");
-}*/
-
-
 app.UseHttpsRedirection();
-
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dashboard Moto API V1");
 });
+
+// -----------------------------------------------------------
+// WEB SCRAPING MULTISITO
+// -----------------------------------------------------------
+
+// Impostazioni Chrome (headless)
+var chromeService = ChromeDriverService.CreateDefaultService();
+chromeService.HideCommandPromptWindow = true;
+chromeService.SuppressInitialDiagnosticInformation = true;
+
+var chromeOptions = new ChromeOptions();
+chromeOptions.AddArgument("--headless=new");
+chromeOptions.AddArgument("--disable-gpu");
+chromeOptions.AddArgument("--no-sandbox");
+chromeOptions.AddArgument("--disable-dev-shm-usage");
+chromeOptions.AddArgument("--blink-settings=imagesEnabled=false");
+chromeOptions.AddArgument("--window-size=1920,1080");
+chromeOptions.AddArgument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
+
+var scraper = new WebScraper(chromeService, chromeOptions);
+List<Motorbike> allMotorbikes = new();
+
+// -----------------------------------------------------------
+// ESECUZIONE DELLO SCRAPING MULTIPAGINA
+// -----------------------------------------------------------
+
+for (int nPag = 1; nPag <= 15; nPag++)
+{
+    Console.WriteLine($"\n================== PAGINA {nPag} ==================\n");
+
+    // 🔸 Sito 1 - AutoScout24
+    var autoscoutConfig = new ScrapeConfig
+    {
+        Url = $"https://www.autoscout24.it/lst-moto?sort=standard&desc=0&ustate=N%2CU&atype=B&cy=I&cat=&body=101&damaged_listing=exclude&source=detailpage_back-to-list&page={nPag}&size=40",
+        Selectors = new SelectorSet
+        {
+            ItemContainer = "div.ListItem_wrapper__TxHWu",
+            Model = "span.ListItem_title_bold__iQJRq",
+            Price = "p.Price_price__APlgs",
+            Mileage = "span[data-testid='VehicleDetails-mileage_road']",
+            FuelType = "span[data-testid='VehicleDetails-gas_pump']",
+            GearBox = "span[data-testid='VehicleDetails-gearbox']",
+            HorsePower = "span[data-testid='VehicleDetails-speedometer']",
+            Location = "span[data-testid='sellerinfo-address']",
+            PostDate = "span.SellerInfo_date"
+        }
+    };
+
+    Console.WriteLine($"🔍 AutoScout24 - Pagina {nPag}...");
+    var result1 = scraper.Scrape(autoscoutConfig);
+    Console.WriteLine($"✅ AutoScout24 Pagina {nPag}: trovate {result1.Count} moto.");
+    allMotorbikes.AddRange(result1);
+
+    // 🔸 Sito 2 - Mundimoto
+    var site2Config = new ScrapeConfig
+    {
+        Url = $"https://mundimoto.com/it/moto-occasioni?utm_source=google&utm_medium=cpc&utm_campaign=it-mm-go-sem-generic&utm_content=147373158222&utm_term=moto+usate&gad_source=1&gad_campaignid=20267190430&gbraid=0AAAAApayHkfrEJ27z7k3htoPq-SACiz5w&gclid=EAIaIQobChMI-IO--qnYkAMVcqRQBh1k_ACUEAAYAiAAEgIYMvD_BwE&motorbike_type=&page={nPag}&size=10",
+        Selectors = new SelectorSet
+        {
+            ItemContainer = "div.group.relative.flex.h-full.w-full.flex-col",
+            Model = "h3.text-base",
+            Price = "h3.font-semibold.m-0.text-3xl",
+            Mileage = "div.flex.w-full.flex-wrap.gap-x-4 p",
+            FuelType = "",
+            GearBox = "",
+            HorsePower = "",
+            Location = "span[class*='location']",
+            PostDate = ""
+        }
+    };
+
+    Console.WriteLine($"🔍 Mundimoto - Pagina {nPag}...");
+    var result2 = scraper.Scrape(site2Config);
+    Console.WriteLine($"✅ Mundimoto Pagina {nPag}: trovate {result2.Count} moto.");
+    allMotorbikes.AddRange(result2);
+
+    // 🔸 Sito 3 - Moto.it
+    var site3Config = new ScrapeConfig
+    {
+        Url = $"https://www.moto.it/moto-usate/ricerca/{nPag}?offer=&cat=sportive,super-sportive&place_rad=200",
+        Selectors = new SelectorSet
+        {
+            ItemContainer = "div.app-ad-list-item",
+            Model = "h2.app-titles",
+            Price = "div.app-price",
+            Mileage = "ul.app-specs",
+            FuelType = "",
+            GearBox = "",
+            HorsePower = "",
+            Location = "ul.app-specs",
+            PostDate = "li.app-date"
+        }
+    };
+
+    Console.WriteLine($"🔍 Moto.it - Pagina {nPag}...");
+    var result3 = scraper.Scrape(site3Config);
+    Console.WriteLine($"✅ Moto.it Pagina {nPag}: trovate {result3.Count} moto.");
+    allMotorbikes.AddRange(result3);
+}
+
+// -----------------------------------------------------------
+// RISULTATI FINALI
+// -----------------------------------------------------------
+
+Console.WriteLine();
+Console.WriteLine($"Totale moto trovate: {allMotorbikes.Count}");
+Console.WriteLine("-----------------------------------------");
+
+foreach (var m in allMotorbikes)
+{
+    Console.WriteLine($"ID: {m.Id}, Model: {m.Model}, Price: {m.Price}€, Mileage: {m.MileageKm}km, Location: {m.Location}, " +
+                      $"PostDate: {m.PostDate}, HP: {m.HorsePower}, GearBox: {m.GearBox}, Brand: {m.Brand}, Fuel: {m.FuelType}");
+}
+
+// -----------------------------------------------------------
+// SALVATAGGIO SU DATABASE (opzionale)
+// -----------------------------------------------------------
+
+
+using (var scope = app.Services.CreateScope())
+{
+    var motoRepository = scope.ServiceProvider.GetRequiredService<IMotoRepository>();
+    var motoUtilities = new MotoUtilities(motoRepository);
+    await motoUtilities.PrintInDatabase(allMotorbikes);
+    Console.WriteLine("💾 Dati salvati nel database.");
+}
+
+// -----------------------------------------------------------
+// ENDPOINT API (GET /motorbikes)
+// -----------------------------------------------------------
+
 app.MapGet("/motorbikes", async (IMotoRepository repository) =>
 {
     return await repository.GetAll();
 });
+
 app.Run();
