@@ -19,9 +19,26 @@
     else
     {
         <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-3">Select Brands to Display</MudText>
+            <MudGrid Class="mb-4">
+                @foreach (var brand in AvailableBrands)
+                {
+                    <MudItem xs="6" sm="4" md="3" lg="2">
+                        <MudCheckBox T="bool" 
+                                     Value="@SelectedBrands.Contains(brand)" 
+                                     ValueChanged="@(async (bool value) => await OnBrandToggled(brand, value))"
+                                     Label="@brand"
+                                     Color="Color.Primary" />
+                    </MudItem>
+                }
+            </MudGrid>
+            
+            <MudDivider Class="mb-4" />
+            
             <MudChart 
                 ChartType="ChartType.Line" 
                 ChartSeries="@Series" 
+                XAxisLabels="@XAxisLabels"
                 Width="100%" 
                 Height="500px"
                 ChartOptions="@_chartOptions">
@@ -29,19 +46,8 @@
             
             <MudText Typo="Typo.body2" Class="mt-4">
                 Total Motorcycles: @Motorbikes.Count() | 
-                Brands Displayed: @Series.Count
+                Brands Displayed: @SelectedBrands.Count
             </MudText>
-            
-            <MudGrid Class="mt-4">
-                @foreach (var series in Series)
-                {
-                    <MudItem xs="6" sm="4" md="3" lg="2">
-                        <MudChip T="string" Color="Color.Default" Style="@($"background-color: {GetBrandColor(series.Name)}")">
-                            @series.Name
-                        </MudChip>
-                    </MudItem>
-                }
-            </MudGrid>
         </MudPaper>
     }
 </MudContainer>
@@ -49,35 +55,25 @@
 @code {
     private IEnumerable<Motorbike>? Motorbikes { get; set; }
     private List<ChartSeries> Series { get; set; } = new();
+    private string[] XAxisLabels { get; set; } = Array.Empty<string>();
+    private List<string> AvailableBrands { get; set; } = new();
+    private HashSet<string> SelectedBrands { get; set; } = new();
     
     private ChartOptions _chartOptions = new ChartOptions
     {
         YAxisTicks = 10,
         YAxisLines = true,
         XAxisLines = true,
-        LineStrokeWidth = 0,
+        LineStrokeWidth = 2,
         InterpolationOption = InterpolationOption.Straight
     };
 
-    private Dictionary<string, string> _brandColors = new Dictionary<string, string>
+    private string[] _brandColors = new[]
     {
-        { "Aprilia", "#FF6B6B" },
-        { "BMW", "#4ECDC4" },
-        { "Ducati", "#FF0000" },
-        { "HarleyDavidson", "#FF8C42" },
-        { "Honda", "#C44569" },
-        { "Kawasaki", "#00B894" },
-        { "KTM", "#F97F51" },
-        { "Suzuki", "#5F27CD" },
-        { "Triumph", "#00D2D3" },
-        { "Yamaha", "#0984E3" },
-        { "MotoGuzzi", "#6C5CE7" },
-        { "MvAgusta", "#FD79A8" },
-        { "Benelli", "#FDCB6E" },
-        { "Piaggio", "#A29BFE" },
-        { "Indian", "#E17055" },
-        { "RoyalEnfield", "#74B9FF" },
-        { "Other", "#B2BEC3" }
+        "#FF6B6B", "#4ECDC4", "#FF0000", "#FF8C42", "#C44569",
+        "#00B894", "#F97F51", "#5F27CD", "#00D2D3", "#0984E3",
+        "#6C5CE7", "#FD79A8", "#FDCB6E", "#A29BFE", "#E17055",
+        "#74B9FF", "#B2BEC3"
     };
 
     protected override async Task OnInitializedAsync()
@@ -88,7 +84,16 @@
             
             if (Motorbikes != null && Motorbikes.Any())
             {
-                PrepareScatterPlotData();
+                AvailableBrands = Motorbikes
+                    .Where(m => m.Price > 0 && m.MileageKm > 0)
+                    .Select(m => m.Brand.ToString())
+                    .Distinct()
+                    .OrderBy(b => b)
+                    .ToList();
+                
+                SelectedBrands = AvailableBrands.Take(10).ToHashSet();
+                
+                PrepareLineGraphData();
             }
         }
         catch (Exception ex)
@@ -97,40 +102,65 @@
         }
     }
 
-    private void PrepareScatterPlotData()
+    private Task OnBrandToggled(string brand, bool isChecked)
     {
-        if (Motorbikes == null) return;
+        if (isChecked)
+        {
+            SelectedBrands.Add(brand);
+        }
+        else
+        {
+            SelectedBrands.Remove(brand);
+        }
+        
+        PrepareLineGraphData();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void PrepareLineGraphData()
+    {
+        if (Motorbikes == null || !SelectedBrands.Any()) return;
         
         var brandGroups = Motorbikes
-            .Where(m => m.Price > 0 && m.MileageKm > 0)
+            .Where(m => m.Price > 0 && m.MileageKm > 0 && SelectedBrands.Contains(m.Brand.ToString()))
             .GroupBy(m => m.Brand.ToString())
-            .OrderBy(g => g.Key);
+            .OrderBy(g => g.Key)
+            .ToList();
+        
+        var allMileages = brandGroups
+            .SelectMany(g => g.Select(m => m.MileageKm))
+            .OrderBy(m => m)
+            .ToList();
+        
+        var mileageStep = (int)((allMileages.Max() - allMileages.Min()) / 20);
+        var mileagePoints = Enumerable.Range(0, 21)
+            .Select(i => allMileages.Min() + (i * mileageStep))
+            .ToList();
+        
+        XAxisLabels = mileagePoints.Select(m => $"{m / 1000}k").ToArray();
         
         Series = new List<ChartSeries>();
+        _chartOptions.ChartPalette = _brandColors;
         
         foreach (var brandGroup in brandGroups)
         {
-            var dataPoints = brandGroup
-                .OrderBy(m => m.MileageKm)
-                .Select(m => m.Price)
-                .ToArray();
+            var brandData = new double[mileagePoints.Count];
             
-            if (dataPoints.Any())
+            for (int i = 0; i < mileagePoints.Count; i++)
             {
-                Series.Add(new ChartSeries
-                {
-                    Name = brandGroup.Key,
-                    Data = dataPoints.Select(p => (double)p).ToArray()
-                });
+                var bike = brandGroup
+                    .OrderBy(m => Math.Abs(m.MileageKm - mileagePoints[i]))
+                    .FirstOrDefault();
+                
+                brandData[i] = bike?.Price ?? 0;
             }
+            
+            Series.Add(new ChartSeries
+            {
+                Name = brandGroup.Key,
+                Data = brandData
+            });
         }
-        
-        var allBrands = brandGroups.Select(g => g.Key).ToList();
-        _chartOptions.ChartPalette = allBrands.Select(GetBrandColor).ToArray();
-    }
-
-    private string GetBrandColor(string brandName)
-    {
-        return _brandColors.TryGetValue(brandName, out var color) ? color : "#95A5A6";
     }
 }
