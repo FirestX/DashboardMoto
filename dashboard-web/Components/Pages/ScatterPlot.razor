@@ -1,0 +1,136 @@
+@page "/scatter-plot"
+@using Models
+@using Services
+@inject IHttpClientFactory HttpClientFactory
+@rendermode InteractiveServer
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">Price vs Mileage by Brand</MudText>
+    
+    @if (Motorbikes is null)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        <MudText>Loading motorcycle data...</MudText>
+    }
+    else if (!Motorbikes.Any())
+    {
+        <MudAlert Severity="Severity.Info">No motorcycle data available.</MudAlert>
+    }
+    else
+    {
+        <MudPaper Class="pa-4">
+            <MudChart 
+                ChartType="ChartType.Line" 
+                ChartSeries="@Series" 
+                Width="100%" 
+                Height="500px"
+                ChartOptions="@_chartOptions">
+            </MudChart>
+            
+            <MudText Typo="Typo.body2" Class="mt-4">
+                Total Motorcycles: @Motorbikes.Count() | 
+                Brands Displayed: @Series.Count
+            </MudText>
+            
+            <MudGrid Class="mt-4">
+                @foreach (var series in Series)
+                {
+                    <MudItem xs="6" sm="4" md="3" lg="2">
+                        <MudChip T="string" Color="Color.Default" Style="@($"background-color: {GetBrandColor(series.Name)}")">
+                            @series.Name
+                        </MudChip>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private IEnumerable<Motorbike>? Motorbikes { get; set; }
+    private List<ChartSeries> Series { get; set; } = new();
+    
+    private ChartOptions _chartOptions = new ChartOptions
+    {
+        YAxisTicks = 10,
+        YAxisLines = true,
+        XAxisLines = true,
+        LineStrokeWidth = 0,
+        InterpolationOption = InterpolationOption.Straight
+    };
+
+    private Dictionary<string, string> _brandColors = new Dictionary<string, string>
+    {
+        { "Aprilia", "#FF6B6B" },
+        { "BMW", "#4ECDC4" },
+        { "Ducati", "#FF0000" },
+        { "HarleyDavidson", "#FF8C42" },
+        { "Honda", "#C44569" },
+        { "Kawasaki", "#00B894" },
+        { "KTM", "#F97F51" },
+        { "Suzuki", "#5F27CD" },
+        { "Triumph", "#00D2D3" },
+        { "Yamaha", "#0984E3" },
+        { "MotoGuzzi", "#6C5CE7" },
+        { "MvAgusta", "#FD79A8" },
+        { "Benelli", "#FDCB6E" },
+        { "Piaggio", "#A29BFE" },
+        { "Indian", "#E17055" },
+        { "RoyalEnfield", "#74B9FF" },
+        { "Other", "#B2BEC3" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Motorbikes = await RequestService.GetMotorbikesRequest(HttpClientFactory);
+            
+            if (Motorbikes != null && Motorbikes.Any())
+            {
+                PrepareScatterPlotData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading motorcycles: {ex.Message}");
+        }
+    }
+
+    private void PrepareScatterPlotData()
+    {
+        if (Motorbikes == null) return;
+        
+        var brandGroups = Motorbikes
+            .Where(m => m.Price > 0 && m.MileageKm > 0)
+            .GroupBy(m => m.Brand.ToString())
+            .OrderBy(g => g.Key);
+        
+        Series = new List<ChartSeries>();
+        
+        foreach (var brandGroup in brandGroups)
+        {
+            var dataPoints = brandGroup
+                .OrderBy(m => m.MileageKm)
+                .Select(m => m.Price)
+                .ToArray();
+            
+            if (dataPoints.Any())
+            {
+                Series.Add(new ChartSeries
+                {
+                    Name = brandGroup.Key,
+                    Data = dataPoints.Select(p => (double)p).ToArray()
+                });
+            }
+        }
+        
+        var allBrands = brandGroups.Select(g => g.Key).ToList();
+        _chartOptions.ChartPalette = allBrands.Select(GetBrandColor).ToArray();
+    }
+
+    private string GetBrandColor(string brandName)
+    {
+        return _brandColors.TryGetValue(brandName, out var color) ? color : "#95A5A6";
+    }
+}

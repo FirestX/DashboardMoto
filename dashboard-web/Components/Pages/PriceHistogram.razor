@@ -1,0 +1,111 @@
+﻿@page "/price-histogram"
+@using Models
+@using Services
+@inject IHttpClientFactory HttpClientFactory
+@rendermode InteractiveServer
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">Motorcycle Price Distribution</MudText>
+    
+    @if (Motorbikes is null)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        <MudText>Loading motorcycle data...</MudText>
+    }
+    else if (!Motorbikes.Any())
+    {
+        <MudAlert Severity="Severity.Info">No motorcycle data available.</MudAlert>
+    }
+    else
+    {
+        <MudPaper Class="pa-4">
+            <MudChart 
+                ChartType="ChartType.Bar" 
+                ChartSeries="@Series" 
+                XAxisLabels="@XAxisLabels"
+                Width="100%" 
+                Height="400px"
+                ChartOptions="@_chartOptions">
+            </MudChart>
+            
+            <MudText Typo="Typo.body2" Class="mt-4">
+                Total Motorcycles: @Motorbikes.Count() | 
+                Price Range: €@MinPrice.ToString("N0") - €@MaxPrice.ToString("N0") |
+                Average Price: €@AvgPrice.ToString("N0")
+            </MudText>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private IEnumerable<Motorbike>? Motorbikes { get; set; }
+    private List<ChartSeries> Series { get; set; } = new();
+    private string[] XAxisLabels { get; set; } = Array.Empty<string>();
+    private double MinPrice { get; set; }
+    private double MaxPrice { get; set; }
+    private double AvgPrice { get; set; }
+    
+    private ChartOptions _chartOptions = new ChartOptions
+    {
+        YAxisTicks = 1,
+        YAxisLines = true,
+        XAxisLines = false,
+        ChartPalette = new[] { "#2196F3", "#1976D2", "#0D47A1" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Motorbikes = await RequestService.GetMotorbikesRequest(HttpClientFactory);
+            
+            if (Motorbikes != null && Motorbikes.Any())
+            {
+                PrepareHistogramData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading motorcycles: {ex.Message}");
+        }
+    }
+
+    private void PrepareHistogramData()
+    {
+        if (Motorbikes == null) return;
+        
+        var prices = Motorbikes.Select(m => m.Price).ToList();
+        
+        MinPrice = prices.Min();
+        MaxPrice = prices.Max();
+        AvgPrice = prices.Average();
+        
+        // Create price bins (ranges)
+        int binCount = 10;
+        double binSize = (MaxPrice - MinPrice) / binCount;
+        
+        var bins = new List<(string Label, int Count)>();
+        
+        for (int i = 0; i < binCount; i++)
+        {
+            double binStart = MinPrice + (i * binSize);
+            double binEnd = binStart + binSize;
+            
+            int count = Motorbikes.Count(m => m.Price >= binStart && (i == binCount - 1 ? m.Price <= binEnd : m.Price < binEnd));
+            
+            string label = $"€{(binStart / 1000):F0}k-{(binEnd / 1000):F0}k";
+            bins.Add((label, count));
+        }
+        
+        XAxisLabels = bins.Select(b => b.Label).ToArray();
+        
+        Series = new List<ChartSeries>
+        {
+            new ChartSeries
+            {
+                Name = "Number of Motorcycles",
+                Data = bins.Select(b => (double)b.Count).ToArray()
+            }
+        };
+    }
+}

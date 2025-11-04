@@ -5,20 +5,47 @@
 @inject IHttpClientFactory HttpClientFactory
 @rendermode InteractiveServer
 
-@if (Motorbikes is null)
-{
-    <p> Loading Motorbikes Data: </p>
-}
-else
-{
-    @foreach (var bike in Motorbikes)
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h3" GutterBottom="true">Motorcycle Dashboard</MudText>
+    
+    <MudText Typo="Typo.h5" Class="mb-2">Histograms</MudText>
+    <MudStack Row="true" Class="mb-4">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/histogram/price">
+            View Price Histogram
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/histogram/horsepower">
+            View Horse Power Histogram
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Tertiary" Href="/histogram/mileage">
+            View Mileage Histogram
+        </MudButton>
+    </MudStack>
+    
+    <MudText Typo="Typo.h5" Class="mb-2">Scatter Plot</MudText>
+    <MudStack Row="true" Class="mb-4">
+        <MudButton Variant="Variant.Filled" Color="Color.Success" Href="/scatter-plot">
+            Price vs Mileage by Brand
+        </MudButton>
+    </MudStack>
+    
+    @if (Motorbikes is null)
     {
-        <p>@bike.Model</p>
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        <MudText>Loading Motorbikes Data...</MudText>
     }
-}
+    else
+    {
+        <MudText Typo="Typo.h5" Class="mb-2">Total Motorcycles: @Motorbikes.Count()</MudText>
+        
+        @foreach (var bike in Motorbikes)
+        {
+            <p>@bike.Model - €@bike.Price.ToString("N0")</p>
+        }
+    }
+</MudContainer>
 
 @code {
-    [BindProperty] private IEnumerable<Motorbike> Motorbikes { get; set; }
+    [BindProperty] private IEnumerable<Motorbike>? Motorbikes { get; set; }
     protected override async Task OnInitializedAsync()
     {
         try
