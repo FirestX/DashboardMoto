@@ -88,6 +88,10 @@ namespace DashboardMoto
                         // Brand: estrai prima parola dal modello (puoi modificare la logica)
                         string brandRaw = string.IsNullOrWhiteSpace(model) ? "" : model.Split(' ')[0];
                         Brand finalBrand = Brand.Other;
+                        if (config.Url.Contains("moto.it"))
+                        {
+                            brandRaw = TryGetText(item, "span.app-leaf");
+                        }
                         if (!string.IsNullOrEmpty(brandRaw))
                         {
                             // attempt a simple map by name (estendi se serve)
@@ -100,7 +104,7 @@ namespace DashboardMoto
 
                         // Mileage
                         double mileage = ParseDouble(TryGetText(item, config.Selectors.Mileage), removeKm: true);
-                        if (config.Url == "https://www.moto.it/moto-usate/ricerca/1?offer=&cat=sportive,super-sportive&place_rad=200" && mileage == 0)
+                        if (config.Url.Contains("moto.it") && mileage == 0)
                         {
                             string mileageText = TryGetText(item, config.Selectors.Mileage); 
                             // esempio di input:
