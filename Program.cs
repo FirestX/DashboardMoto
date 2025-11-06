@@ -72,7 +72,7 @@ for (int nPag = 1; nPag <= 15; nPag++)
 {
     Console.WriteLine($"\n================== PAGINA {nPag} ==================\n");
 
-    // 🔸 Sito 1 - AutoScout24
+    //AutoScout24
     var autoscoutConfig = new ScrapeConfig
     {
         Url = $"https://www.autoscout24.it/lst-moto?sort=standard&desc=0&ustate=N%2CU&atype=B&cy=I&cat=&body=101&damaged_listing=exclude&source=detailpage_back-to-list&page={nPag}&size=40",
@@ -90,12 +90,12 @@ for (int nPag = 1; nPag <= 15; nPag++)
         }
     };
 
-    Console.WriteLine($"🔍 AutoScout24 - Pagina {nPag}...");
+    Console.WriteLine($"AutoScout24 - Pagina {nPag}...");
     var result1 = scraper.Scrape(autoscoutConfig);
-    Console.WriteLine($"✅ AutoScout24 Pagina {nPag}: trovate {result1.Count} moto.");
+    Console.WriteLine($"AutoScout24 Pagina {nPag}: trovate {result1.Count} moto.");
     allMotorbikes.AddRange(result1);
 
-    // 🔸 Sito 2 - Mundimoto
+    //Mundimoto
     var site2Config = new ScrapeConfig
     {
         Url = $"https://mundimoto.com/it/moto-occasioni?utm_source=google&utm_medium=cpc&utm_campaign=it-mm-go-sem-generic&utm_content=147373158222&utm_term=moto+usate&gad_source=1&gad_campaignid=20267190430&gbraid=0AAAAApayHkfrEJ27z7k3htoPq-SACiz5w&gclid=EAIaIQobChMI-IO--qnYkAMVcqRQBh1k_ACUEAAYAiAAEgIYMvD_BwE&motorbike_type=&page={nPag}&size=10",
@@ -113,12 +113,12 @@ for (int nPag = 1; nPag <= 15; nPag++)
         }
     };
 
-    Console.WriteLine($"🔍 Mundimoto - Pagina {nPag}...");
+    Console.WriteLine($"Mundimoto - Pagina {nPag}...");
     var result2 = scraper.Scrape(site2Config);
-    Console.WriteLine($"✅ Mundimoto Pagina {nPag}: trovate {result2.Count} moto.");
+    Console.WriteLine($"Mundimoto Pagina {nPag}: trovate {result2.Count} moto.");
     allMotorbikes.AddRange(result2);
 
-    // 🔸 Sito 3 - Moto.it
+    // Moto.it
     var site3Config = new ScrapeConfig
     {
         Url = $"https://www.moto.it/moto-usate/ricerca/{nPag}?offer=&cat=sportive,super-sportive&place_rad=200",
@@ -136,9 +136,9 @@ for (int nPag = 1; nPag <= 15; nPag++)
         }
     };
 
-    Console.WriteLine($"🔍 Moto.it - Pagina {nPag}...");
+    Console.WriteLine($"Moto.it - Pagina {nPag}...");
     var result3 = scraper.Scrape(site3Config);
-    Console.WriteLine($"✅ Moto.it Pagina {nPag}: trovate {result3.Count} moto.");
+    Console.WriteLine($"Moto.it Pagina {nPag}: trovate {result3.Count} moto.");
     allMotorbikes.AddRange(result3);
 }
 
@@ -150,11 +150,14 @@ Console.WriteLine();
 Console.WriteLine($"Totale moto trovate: {allMotorbikes.Count}");
 Console.WriteLine("-----------------------------------------");
 
+/*
+// Stampa i dettagli di ogni moto trovata
 foreach (var m in allMotorbikes)
 {
     Console.WriteLine($"ID: {m.Id}, Model: {m.Model}, Price: {m.Price}€, Mileage: {m.MileageKm}km, Location: {m.Location}, " +
                       $"PostDate: {m.PostDate}, HP: {m.HorsePower}, GearBox: {m.GearBox}, Brand: {m.Brand}, Fuel: {m.FuelType}");
 }
+*/
 
 // -----------------------------------------------------------
 // SALVATAGGIO SU DATABASE (opzionale)
@@ -166,7 +169,7 @@ using (var scope = app.Services.CreateScope())
     var motoRepository = scope.ServiceProvider.GetRequiredService<IMotoRepository>();
     var motoUtilities = new MotoUtilities(motoRepository);
     await motoUtilities.PrintInDatabase(allMotorbikes);
-    Console.WriteLine("💾 Dati salvati nel database.");
+    Console.WriteLine("Dati salvati nel database.");
 }
 
 // -----------------------------------------------------------

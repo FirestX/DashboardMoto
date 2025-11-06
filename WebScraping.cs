@@ -85,7 +85,7 @@ namespace DashboardMoto
                         // Model
                         string model = TryGetText(item, config.Selectors.Model);
 
-                        // Brand: estrai prima parola dal modello (puoi modificare la logica)
+                        // Brand
                         string brandRaw = string.IsNullOrWhiteSpace(model) ? "" : model.Split(' ')[0];
                         Brand finalBrand = Brand.Other;
                         if (config.Url.Contains("moto.it"))
@@ -94,7 +94,6 @@ namespace DashboardMoto
                         }
                         if (!string.IsNullOrEmpty(brandRaw))
                         {
-                            // attempt a simple map by name (estendi se serve)
                             if (Enum.TryParse<Brand>(brandRaw.Replace("-", "").Replace(" ", ""), true, out var parsedBrand))
                                 finalBrand = parsedBrand;
                         }
@@ -106,20 +105,16 @@ namespace DashboardMoto
                         double mileage = ParseDouble(TryGetText(item, config.Selectors.Mileage), removeKm: true);
                         if (config.Url.Contains("moto.it") && mileage == 0)
                         {
-                            string mileageText = TryGetText(item, config.Selectors.Mileage); 
-                            // esempio di input:
-                            // "Rivoli (TO)\n2021\nKm 4.769\n3 ottobre 2025"
+                            string mileageText = TryGetText(item, config.Selectors.Mileage);
 
                             if (!string.IsNullOrEmpty(mileageText))
                             {
-                                // Trova "Km 4.769" o simili (anche con maiuscole/minuscole o spazi variabili)
                                 var match = Regex.Match(mileageText, @"(?i)\bkm\s*([\d\.,]+)");
 
                                 if (match.Success)
                                 {
                                     string kmValue = match.Groups[1].Value.Trim();
 
-                                    // Normalizza formato numerico (rimuove separatori migliaia e uniforma decimali)
                                     kmValue = kmValue.Replace(".", "").Replace(",", ".");
 
                                     if (double.TryParse(kmValue, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedMileage))
@@ -133,21 +128,14 @@ namespace DashboardMoto
                         else if (config.Url.Contains("mundimoto.com") && mileage == 0)
                         {
                             string mileageText = TryGetText(item, config.Selectors.Mileage);
-                            // esempio di input:
-                            // "2021   614 km   A"
 
                             if (!string.IsNullOrEmpty(mileageText))
                             {
-                                // Cerca pattern come "614 km" o "KM 5.200"
                                 var match = Regex.Match(mileageText, @"(?i)\b([\d\.,]+)\s*km\b");
-
                                 if (match.Success)
                                 {
                                     string kmValue = match.Groups[1].Value.Trim();
-
-                                    // Normalizza formato (rimuove separatori di migliaia)
                                     kmValue = kmValue.Replace(".", "").Replace(",", ".");
-
                                     if (double.TryParse(kmValue, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedMileage))
                                     {
                                         mileage = parsedMileage;
@@ -158,7 +146,7 @@ namespace DashboardMoto
                         // Location
                         string location = TryGetText(item, config.Selectors.Location);
 
-                        // HorsePower: prova a estrarre "(NN CV)" al interno del testo
+                        // HorsePower
                         double horsePower = 0;
                         var hpText = TryGetText(item, config.Selectors.HorsePower);
                         if (!string.IsNullOrWhiteSpace(hpText))
@@ -203,16 +191,16 @@ namespace DashboardMoto
                             sellerId = 3;
                         }
 
-                        // Creazione oggetto Motorbike — adatta il costruttore se la tua entity è diversa
+                        // Creazione oggetto Motorbike
                         motorbikes.Add(new Motorbike(
-                            0,
+                            0, // 0 per assegnarlo poi nel DB
                             horsePower,
                             model,
                             postDate,
                             price,
                             mileage,
                             location,
-                            sellerId,              // SellerId — se lo prendi dal sito inseriscilo qui
+                            sellerId,      
                             finalBrand,
                             fuelType,
                             gearBox
@@ -220,11 +208,11 @@ namespace DashboardMoto
                     }
                     catch
                     {
-                        // ignora singolo elemento e continua
+                        
                     }
                 }
 
-                // se non trovi nulla salva page source per debug (opzionale)
+                // se non trova nulla salva page source per debug
                 if (motorbikes.Count == 0)
                 {
                     System.IO.File.WriteAllText("pagesource_debug.html", driver.PageSource);
@@ -238,7 +226,7 @@ namespace DashboardMoto
             return motorbikes;
         }
 
-        // helper: legge testo o "" se non presente
+        //legge testo o "" se non presente
         private static string TryGetText(IWebElement context, string cssSelector)
         {
             if (string.IsNullOrWhiteSpace(cssSelector)) return string.Empty;
@@ -253,7 +241,7 @@ namespace DashboardMoto
             }
         }
 
-        // helper: rimuove simboli e prova a parseare
+        // rimuove simboli e prova a parseare
         private static double ParseDouble(string raw, bool removeCurrency = false, bool removeKm = false)
         {
             if (string.IsNullOrWhiteSpace(raw)) return 0;
