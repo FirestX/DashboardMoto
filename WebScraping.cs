@@ -191,6 +191,17 @@ namespace DashboardMoto
                         var dateText = TryGetText(item, config.Selectors.PostDate);
                         if (!string.IsNullOrWhiteSpace(dateText) && DateTime.TryParse(dateText, out var parsedDate))
                             postDate = parsedDate;
+                        
+                        // SellerId in base al sito
+                        int sellerId = 1; // default
+                        if (config.Url.Contains("moto.it"))
+                        {
+                            sellerId = 2;
+                        }
+                        else if (config.Url.Contains("mundimoto.com"))
+                        {
+                            sellerId = 3;
+                        }
 
                         // Creazione oggetto Motorbike — adatta il costruttore se la tua entity è diversa
                         motorbikes.Add(new Motorbike(
@@ -201,7 +212,7 @@ namespace DashboardMoto
                             price,
                             mileage,
                             location,
-                            0,              // SellerId — se lo prendi dal sito inseriscilo qui
+                            sellerId,              // SellerId — se lo prendi dal sito inseriscilo qui
                             finalBrand,
                             fuelType,
                             gearBox
