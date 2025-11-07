@@ -4,7 +4,7 @@
 @inject IHttpClientFactory HttpClientFactory
 @rendermode InteractiveServer
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+<MudPaper Class="pa-4">
     <MudText Typo="Typo.h4" GutterBottom="true">Price vs Mileage by Brand</MudText>
     
     @if (Motorbikes is null)
@@ -18,8 +18,7 @@
     }
     else
     {
-        <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" Class="mb-3">Select Brands to Display</MudText>
+        <MudText Typo="Typo.h6" Class="mb-3">Select Brands to Display</MudText>
             <MudGrid Class="mb-4">
                 @foreach (var brand in AvailableBrands)
                 {
@@ -44,16 +43,16 @@
                 ChartOptions="@_chartOptions">
             </MudChart>
             
-            <MudText Typo="Typo.body2" Class="mt-4">
-                Total Motorcycles: @Motorbikes.Count() | 
-                Brands Displayed: @SelectedBrands.Count
-            </MudText>
-        </MudPaper>
+        <MudText Typo="Typo.body2" Class="mt-4">
+            Total Motorcycles: @Motorbikes.Count() | 
+            Brands Displayed: @SelectedBrands.Count
+        </MudText>
     }
-</MudContainer>
+</MudPaper>
 
 @code {
-    private IEnumerable<Motorbike>? Motorbikes { get; set; }
+    [Parameter]
+    public IEnumerable<Motorbike>? Motorbikes { get; set; }
     private List<ChartSeries> Series { get; set; } = new();
     private string[] XAxisLabels { get; set; } = Array.Empty<string>();
     private List<string> AvailableBrands { get; set; } = new();
@@ -78,27 +77,30 @@
 
     protected override async Task OnInitializedAsync()
     {
-        try
+        if (Motorbikes is null)
         {
-            Motorbikes = await RequestService.GetMotorbikesRequest(HttpClientFactory);
-            
-            if (Motorbikes != null && Motorbikes.Any())
+            try
             {
-                AvailableBrands = Motorbikes
-                    .Where(m => m.Price > 0 && m.MileageKm > 0)
-                    .Select(m => m.Brand.ToString())
-                    .Distinct()
-                    .OrderBy(b => b)
-                    .ToList();
-                
-                SelectedBrands = AvailableBrands.Take(10).ToHashSet();
-                
-                PrepareLineGraphData();
+                Motorbikes = await RequestService.GetMotorbikesRequest(HttpClientFactory);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading motorcycles: {ex.Message}");
             }
         }
-        catch (Exception ex)
+        
+        if (Motorbikes != null && Motorbikes.Any())
         {
-            Console.WriteLine($"Error loading motorcycles: {ex.Message}");
+            AvailableBrands = Motorbikes
+                .Where(m => m.Price > 0 && m.MileageKm > 0)
+                .Select(m => m.Brand.ToString())
+                .Distinct()
+                .OrderBy(b => b)
+                .ToList();
+            
+            SelectedBrands = AvailableBrands.Take(10).ToHashSet();
+            
+            PrepareLineGraphData();
         }
     }
 
@@ -133,12 +135,14 @@
             .OrderBy(m => m)
             .ToList();
         
-        var mileageStep = (int)((allMileages.Max() - allMileages.Min()) / 20);
-        var mileagePoints = Enumerable.Range(0, 21)
-            .Select(i => allMileages.Min() + (i * mileageStep))
+        var minMileage = allMileages.Min();
+        var maxMileage = allMileages.Max();
+        var mileageStep = (maxMileage - minMileage) / 9.0;
+        var mileagePoints = Enumerable.Range(0, 10)
+            .Select(i => minMileage + (i * mileageStep))
             .ToList();
         
-        XAxisLabels = mileagePoints.Select(m => $"{m / 1000}k").ToArray();
+        XAxisLabels = mileagePoints.Select(m => $"{(int)(m / 1000)}k").ToArray();
         
         Series = new List<ChartSeries>();
         _chartOptions.ChartPalette = _brandColors;

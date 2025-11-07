@@ -4,8 +4,8 @@
 @inject IHttpClientFactory HttpClientFactory
 @rendermode InteractiveServer
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <MudText Typo="Typo.h4" GutterBottom="true">@GetTitle()</MudText>
+<MudPaper Class="pa-4">
+    <MudText Typo="Typo.h5" GutterBottom="true">@GetTitle()</MudText>
     
     @if (Motorbikes is null)
     {
@@ -18,28 +18,27 @@
     }
     else
     {
-        <MudPaper Class="pa-4">
-            <MudChart 
-                ChartType="ChartType.Bar" 
-                ChartSeries="@Series" 
-                XAxisLabels="@XAxisLabels"
-                Width="100%" 
-                Height="400px"
-                ChartOptions="@_chartOptions">
-            </MudChart>
-            
-            <MudText Typo="Typo.body2" Class="mt-4">
-                @GetSummaryText()
-            </MudText>
-        </MudPaper>
+        <MudChart 
+            ChartType="ChartType.Bar" 
+            ChartSeries="@Series" 
+            XAxisLabels="@XAxisLabels"
+            Width="100%" 
+            Height="350px"
+            ChartOptions="@_chartOptions">
+        </MudChart>
+        
+        <MudText Typo="Typo.body2" Class="mt-2">
+            @GetSummaryText()
+        </MudText>
     }
-</MudContainer>
+</MudPaper>
 
 @code {
     [Parameter]
     public string MetricType { get; set; } = "price";
-    
-    private IEnumerable<Motorbike>? Motorbikes { get; set; }
+
+    [Parameter]
+    public IEnumerable<Motorbike>? Motorbikes { get; set; }
     private List<ChartSeries> Series { get; set; } = new();
     private string[] XAxisLabels { get; set; } = Array.Empty<string>();
     private double MinValue { get; set; }
@@ -56,18 +55,21 @@
 
     protected override async Task OnInitializedAsync()
     {
-        try
+        if (Motorbikes is null)
         {
-            Motorbikes = await RequestService.GetMotorbikesRequest(HttpClientFactory);
-            
-            if (Motorbikes != null && Motorbikes.Any())
+            try
             {
-                PrepareHistogramData();
+                Motorbikes = await RequestService.GetMotorbikesRequest(HttpClientFactory);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading motorcycles: {ex.Message}");
             }
         }
-        catch (Exception ex)
+        
+        if (Motorbikes != null && Motorbikes.Any())
         {
-            Console.WriteLine($"Error loading motorcycles: {ex.Message}");
+            PrepareHistogramData();
         }
     }
 
