@@ -68,7 +68,7 @@ List<Motorbike> allMotorbikes = new();
 // ESECUZIONE DELLO SCRAPING MULTIPAGINA
 // -----------------------------------------------------------
 
-for (int nPag = 1; nPag <= 1; nPag++)
+for (int nPag = 1; nPag <= 0; nPag++)
 {
     Console.WriteLine($"\n================== PAGINA {nPag} ==================\n");
 
@@ -161,13 +161,13 @@ foreach (var m in allMotorbikes)
 // -----------------------------------------------------------
 
 
-using (var scope = app.Services.CreateScope())
-{
-    var motoRepository = scope.ServiceProvider.GetRequiredService<IMotoRepository>();
-    var motoUtilities = new MotoUtilities(motoRepository);
-    await motoUtilities.PrintInDatabase(allMotorbikes);
-    Console.WriteLine("💾 Dati salvati nel database.");
-}
+// using (var scope = app.Services.CreateScope())
+// {
+//     var motoRepository = scope.ServiceProvider.GetRequiredService<IMotoRepository>();
+//     var motoUtilities = new MotoUtilities(motoRepository);
+//     await motoUtilities.PrintInDatabase(allMotorbikes);
+//     Console.WriteLine("💾 Dati salvati nel database.");
+// }
 
 // -----------------------------------------------------------
 // ENDPOINT API (GET /motorbikes)
