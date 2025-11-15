@@ -4,12 +4,18 @@ using DashboardMoto.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using OpenQA.Selenium.Chrome;
+using Serilog;
 
 // -----------------------------------------------------------
 // CONFIGURAZIONE BASE DELL'APPLICAZIONE
 // -----------------------------------------------------------
 
 var builder = WebApplication.CreateBuilder(args);
+// Serilog
+builder.Host.UseSerilog((context, configuration) =>
+        {
+            configuration.ReadFrom.Configuration(context.Configuration);
+        });
 
 // Swagger
 builder.Services.AddSwaggerGen(options =>
@@ -28,6 +34,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Repository moto
 builder.Services.AddScoped<IMotoRepository, MotoRepository>();
+
+// WebScraper service
+builder.Services.AddScoped<WebScraper>();
 
 var app = builder.Build();
 
@@ -52,13 +61,8 @@ app.MapGet("/motorbikes", async (IMotoRepository repository) =>
     return await repository.GetAll();
 });
 
-app.MapPost("/motorbikes/autoscout24/{nPage:int}", async (int nPage, IMotoRepository repository) =>
+app.MapPost("/motorbikes/autoscout24/{nPage:int}", async (int nPage, IMotoRepository repository, WebScraper scraper) =>
 {
-    var chromeService = ChromeDriverService.CreateDefaultService();
-
-    var chromeOptions = new ChromeOptions();
-
-    var scraper = new WebScraper(chromeService, chromeOptions);
     var allMotorbikes = new List<Motorbike>();
 
     for (int i = 1; i <= nPage; i++)
@@ -93,13 +97,8 @@ app.MapPost("/motorbikes/autoscout24/{nPage:int}", async (int nPage, IMotoReposi
     return Results.Ok(new { totalMotorbikes = allMotorbikes.Count, motorbikes = allMotorbikes });
 });
 
-app.MapPost("/motorbikes/mundimoto/{nPage:int}", async (int nPage, IMotoRepository repository) =>
+app.MapPost("/motorbikes/mundimoto/{nPage:int}", async (int nPage, IMotoRepository repository, WebScraper scraper) =>
 {
-    var chromeService = ChromeDriverService.CreateDefaultService();
-
-    var chromeOptions = new ChromeOptions();
-
-    var scraper = new WebScraper(chromeService, chromeOptions);
     var allMotorbikes = new List<Motorbike>();
 
     for (int i = 1; i <= nPage; i++)
@@ -134,13 +133,8 @@ app.MapPost("/motorbikes/mundimoto/{nPage:int}", async (int nPage, IMotoReposito
     return Results.Ok(new { totalMotorbikes = allMotorbikes.Count, motorbikes = allMotorbikes });
 });
 
-app.MapPost("/motorbikes/motoit/{nPage:int}", async (int nPage, IMotoRepository repository) =>
+app.MapPost("/motorbikes/motoit/{nPage:int}", async (int nPage, IMotoRepository repository, WebScraper scraper) =>
 {
-    var chromeService = ChromeDriverService.CreateDefaultService();
-
-    var chromeOptions = new ChromeOptions();
-
-    var scraper = new WebScraper(chromeService, chromeOptions);
     var allMotorbikes = new List<Motorbike>();
 
     for (int i = 1; i <= nPage; i++)
