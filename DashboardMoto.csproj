@@ -21,4 +21,15 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.6" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="dashboard-web/**" />
+    <Content Remove="dashboard-web/**" />
+    <EmbeddedResource Remove="dashboard-web/**" />
+    <None Remove="dashboard-web/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <RazorComponent Remove="dashboard-web/**/*.razor" />
+  </ItemGroup>
+
 </Project>

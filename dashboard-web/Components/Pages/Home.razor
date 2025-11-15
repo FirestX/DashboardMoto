@@ -1,0 +1,58 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.Mvc
+@using Models
+@using Services
+@inject IHttpClientFactory HttpClientFactory
+@rendermode InteractiveServer
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h3" GutterBottom="true" Class="text-center mb-6">Motorcycle Dashboard</MudText>
+
+    @if (Motorbikes is null)
+    {
+        <div class="text-center">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            <MudText>Loading motorcycle data...</MudText>
+        </div>
+    }
+    else if (!Motorbikes.Any())
+    {
+        <MudAlert Severity="Severity.Info">No motorcycle data available.</MudAlert>
+    }
+    else
+    {
+        <MudGrid>
+            <MudItem xs="12">
+                <ScatterPlot Motorbikes="@Motorbikes"/>
+            </MudItem>
+            
+            <MudItem xs="12" md="4">
+                <PriceHistogram Motorbikes="@Motorbikes"/>
+            </MudItem>
+            
+            <MudItem xs="12" md="4">
+                <Histogram Motorbikes="@Motorbikes" MetricType="horsepower"/>
+            </MudItem>
+            
+            <MudItem xs="12" md="4">
+                <Histogram Motorbikes="@Motorbikes" MetricType="mileage"/>
+            </MudItem>
+        </MudGrid>
+    }
+
+</MudContainer>
+
+@code {
+    [BindProperty] private IEnumerable<Motorbike>? Motorbikes { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Motorbikes = await RequestService.GetMotorbikesRequest(HttpClientFactory);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+}
