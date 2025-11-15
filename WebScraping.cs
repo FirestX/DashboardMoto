@@ -35,9 +35,11 @@ namespace DashboardMoto
     {
         private readonly ChromeOptions _options;
         private readonly ChromeDriverService _service;
+        private readonly ILogger<WebScraper> _logger;
 
-        public WebScraper(ChromeDriverService? service = null, ChromeOptions? options = null)
+        public WebScraper(ILogger<WebScraper> logger, ChromeDriverService? service = null, ChromeOptions? options = null)
         {
+            _logger = logger;
             _service = service ?? ChromeDriverService.CreateDefaultService();
             _service.HideCommandPromptWindow = true;
             _service.SuppressInitialDiagnosticInformation = true;
@@ -76,6 +78,7 @@ namespace DashboardMoto
                 var items = driver.FindElements(By.CssSelector(config.Selectors.ItemContainer));
                 int runningId = 0;
 
+                _logger.LogInformation("Trovati {ItemsCount} elementi in {Url}", items.Count, config.Url);
                 foreach (var item in items)
                 {
                     try
