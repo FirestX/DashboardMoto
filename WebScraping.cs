@@ -36,6 +36,7 @@ namespace DashboardMoto
         private readonly ChromeOptions _options;
         private readonly ChromeDriverService _service;
         private readonly ILogger<WebScraper> _logger;
+        private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(3, 3); // Max 3 concurrent scrapers
 
         public WebScraper(ILogger<WebScraper> logger, ChromeDriverService? service = null, ChromeOptions? options = null)
         {
@@ -55,8 +56,29 @@ namespace DashboardMoto
             _options.AddArgument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
         }
 
-        // Metodo principale: riceve una configurazione e restituisce lista di Motorbike
+        // Metodo async con semaphore per controllare concorrenza
+        public async Task<List<Motorbike>> ScrapeAsync(ScrapeConfig config)
+        {
+            await _semaphore.WaitAsync();
+            try
+            {
+                _logger.LogInformation("Starting scrape for URL: {Url}", config.Url);
+                return await Task.Run(() => ScrapeInternal(config));
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+        }
+
+        // Metodo sincrono per backward compatibility
         public List<Motorbike> Scrape(ScrapeConfig config)
+        {
+            return ScrapeInternal(config);
+        }
+
+        // Metodo interno che esegue lo scraping effettivo
+        private List<Motorbike> ScrapeInternal(ScrapeConfig config)
         {
             var motorbikes = new List<Motorbike>();
 
