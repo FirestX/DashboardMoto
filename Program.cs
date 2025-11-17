@@ -63,13 +63,14 @@ app.MapGet("/motorbikes", async (IMotoRepository repository) =>
 
 app.MapPost("/motorbikes/autoscout24/{nPage:int}", async (int nPage, IMotoRepository repository, WebScraper scraper) =>
 {
-    var allMotorbikes = new List<Motorbike>();
+    var scrapeTasks = new List<Task<List<Motorbike>>>();
 
     for (int i = 1; i <= nPage; i++)
     {
+        int pageNum = i; // Capture loop variable
         var config = new ScrapeConfig
         {
-            Url = $"https://www.autoscout24.it/lst-moto?sort=standard&desc=0&ustate=N%2CU&atype=B&cy=I&cat=&body=101&damaged_listing=exclude&source=detailpage_back-to-list&page={i}&size=40",
+            Url = $"https://www.autoscout24.it/lst-moto?sort=standard&desc=0&ustate=N%2CU&atype=B&cy=I&cat=&body=101&damaged_listing=exclude&source=detailpage_back-to-list&page={pageNum}&size=40",
             Selectors = new SelectorSet
             {
                 ItemContainer = "div.ListItem_wrapper__TxHWu",
@@ -84,28 +85,31 @@ app.MapPost("/motorbikes/autoscout24/{nPage:int}", async (int nPage, IMotoReposi
             }
         };
 
-        Console.WriteLine($"AutoScout24 - Pagina {i}/{nPage}...");
-        var result = scraper.Scrape(config);
-        Console.WriteLine($"AutoScout24 Pagina {i}: trovate {result.Count} moto.");
-        allMotorbikes.AddRange(result);
+        scrapeTasks.Add(scraper.ScrapeAsync(config));
     }
+
+    Console.WriteLine($"AutoScout24 - Scraping {nPage} pages in parallel (max 3 concurrent)...");
+    var results = await Task.WhenAll(scrapeTasks);
+    var allMotorbikes = results.SelectMany(list => list).ToList();
+    
+    Console.WriteLine($"AutoScout24 - Total found: {allMotorbikes.Count} motorbikes");
 
     var motoUtilities = new MotoUtilities(repository);
     // await motoUtilities.PrintInDatabase(allMotorbikes);
-    Console.WriteLine($"Totale moto trovate: {allMotorbikes.Count}");
 
-    return Results.Ok(new { totalMotorbikes = allMotorbikes.Count, motorbikes = allMotorbikes });
+    return Results.Ok(new { totalMotorbikes = allMotorbikes.Count, pagesScraped = nPage, motorbikes = allMotorbikes });
 });
 
 app.MapPost("/motorbikes/mundimoto/{nPage:int}", async (int nPage, IMotoRepository repository, WebScraper scraper) =>
 {
-    var allMotorbikes = new List<Motorbike>();
+    var scrapeTasks = new List<Task<List<Motorbike>>>();
 
     for (int i = 1; i <= nPage; i++)
     {
+        int pageNum = i; // Capture loop variable
         var config = new ScrapeConfig
         {
-            Url = $"https://mundimoto.com/it/moto-occasioni?utm_source=google&utm_medium=cpc&utm_campaign=it-mm-go-sem-generic&utm_content=147373158222&utm_term=moto+usate&gad_source=1&gad_campaignid=20267190430&gbraid=0AAAAApayHkfrEJ27z7k3htoPq-SACiz5w&gclid=EAIaIQobChMI-IO--qnYkAMVcqRQBh1k_ACUEAAYAiAAEgIYMvD_BwE&motorbike_type=&page={i}&size=10",
+            Url = $"https://mundimoto.com/it/moto-occasioni?utm_source=google&utm_medium=cpc&utm_campaign=it-mm-go-sem-generic&utm_content=147373158222&utm_term=moto+usate&gad_source=1&gad_campaignid=20267190430&gbraid=0AAAAApayHkfrEJ27z7k3htoPq-SACiz5w&gclid=EAIaIQobChMI-IO--qnYkAMVcqRQBh1k_ACUEAAYAiAAEgIYMvD_BwE&motorbike_type=&page={pageNum}&size=10",
             Selectors = new SelectorSet
             {
                 ItemContainer = "div.group.relative.flex.h-full.w-full.flex-col",
@@ -120,28 +124,31 @@ app.MapPost("/motorbikes/mundimoto/{nPage:int}", async (int nPage, IMotoReposito
             }
         };
 
-        Console.WriteLine($"Mundimoto - Pagina {i}/{nPage}...");
-        var result = scraper.Scrape(config);
-        Console.WriteLine($"Mundimoto Pagina {i}: trovate {result.Count} moto.");
-        allMotorbikes.AddRange(result);
+        scrapeTasks.Add(scraper.ScrapeAsync(config));
     }
+
+    Console.WriteLine($"Mundimoto - Scraping {nPage} pages in parallel (max 3 concurrent)...");
+    var results = await Task.WhenAll(scrapeTasks);
+    var allMotorbikes = results.SelectMany(list => list).ToList();
+    
+    Console.WriteLine($"Mundimoto - Total found: {allMotorbikes.Count} motorbikes");
 
     var motoUtilities = new MotoUtilities(repository);
     // await motoUtilities.PrintInDatabase(allMotorbikes);
-    Console.WriteLine($"Totale moto trovate: {allMotorbikes.Count}");
 
-    return Results.Ok(new { totalMotorbikes = allMotorbikes.Count, motorbikes = allMotorbikes });
+    return Results.Ok(new { totalMotorbikes = allMotorbikes.Count, pagesScraped = nPage, motorbikes = allMotorbikes });
 });
 
 app.MapPost("/motorbikes/motoit/{nPage:int}", async (int nPage, IMotoRepository repository, WebScraper scraper) =>
 {
-    var allMotorbikes = new List<Motorbike>();
+    var scrapeTasks = new List<Task<List<Motorbike>>>();
 
     for (int i = 1; i <= nPage; i++)
     {
+        int pageNum = i; // Capture loop variable
         var config = new ScrapeConfig
         {
-            Url = $"https://www.moto.it/moto-usate/ricerca/{i}?offer=&cat=sportive,super-sportive&place_rad=200",
+            Url = $"https://www.moto.it/moto-usate/ricerca/{pageNum}?offer=&cat=sportive,super-sportive&place_rad=200",
             Selectors = new SelectorSet
             {
                 ItemContainer = "div.app-ad-list-item",
@@ -156,17 +163,19 @@ app.MapPost("/motorbikes/motoit/{nPage:int}", async (int nPage, IMotoRepository 
             }
         };
 
-        Console.WriteLine($"Moto.it - Pagina {i}/{nPage}...");
-        var result = scraper.Scrape(config);
-        Console.WriteLine($"Moto.it Pagina {i}: trovate {result.Count} moto.");
-        allMotorbikes.AddRange(result);
+        scrapeTasks.Add(scraper.ScrapeAsync(config));
     }
+
+    Console.WriteLine($"Moto.it - Scraping {nPage} pages in parallel (max 3 concurrent)...");
+    var results = await Task.WhenAll(scrapeTasks);
+    var allMotorbikes = results.SelectMany(list => list).ToList();
+    
+    Console.WriteLine($"Moto.it - Total found: {allMotorbikes.Count} motorbikes");
 
     var motoUtilities = new MotoUtilities(repository);
     // await motoUtilities.PrintInDatabase(allMotorbikes);
-    Console.WriteLine($"Totale moto trovate: {allMotorbikes.Count}");
 
-    return Results.Ok(new { totalMotorbikes = allMotorbikes.Count, motorbikes = allMotorbikes });
+    return Results.Ok(new { totalMotorbikes = allMotorbikes.Count, pagesScraped = nPage, motorbikes = allMotorbikes });
 });
 
 app.Run();
