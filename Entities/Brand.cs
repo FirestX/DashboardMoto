@@ -1,22 +1,11 @@
-﻿namespace DashboardMoto.Entities;
+﻿using Microsoft.EntityFrameworkCore;
 
-public enum Brand
+namespace DashboardMoto.Entities;
+
+[Index(nameof(Name), IsUnique = true)]
+public class Brand
 {
-    Aprilia,
-    BMW,
-    Ducati,
-    HarleyDavidson,
-    Honda,
-    Kawasaki,
-    KTM,
-    Suzuki,
-    Triumph,
-    Yamaha,
-    MotoGuzzi,
-    MvAgusta,
-    Benelli,
-    Piaggio,
-    Indian,
-    RoyalEnfield,
-    Other
+    public int Id { get; set; }
+    public required string Name { get; set; }
+    public ICollection<Motorbike> Motorbikes { get; set; } = [];
 }
