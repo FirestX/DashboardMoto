@@ -3,15 +3,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DashboardMoto.Persistence;
 
-public class AppDbContext : DbContext
+public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<Motorbike> Motorbikes { get; set; }
+	public DbSet<Brand> Brands { get; set; }
+	public DbSet<Fuel> Fuels { get; set; }
+	public DbSet<Gearbox> Gearboxes { get; set; }
     public DbSet<Seller> Sellers { get; set; }
 
-    public AppDbContext(DbContextOptions<AppDbContext> options)
-        : base(options) { }
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+	protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Motorbike>()
             .HasOne(m => m.Seller)
