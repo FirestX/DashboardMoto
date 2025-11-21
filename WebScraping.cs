@@ -4,6 +4,7 @@ using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
 using DashboardMoto.Entities;
+using DashboardMoto.Entities.Dtos;
 
 namespace DashboardMoto
 {
@@ -98,7 +99,6 @@ namespace DashboardMoto
                 });
 
                 var items = driver.FindElements(By.CssSelector(config.Selectors.ItemContainer));
-                int runningId = 0;
 
                 _logger.LogInformation("Trovati {ItemsCount} elementi in {Url}", items.Count, config.Url);
                 foreach (var item in items)
@@ -186,16 +186,18 @@ namespace DashboardMoto
                         }
 
                         // Gearbox
-                        GearBox gearBox = GearBox.Manual;
-                        var gearText = TryGetText(item, config.Selectors.GearBox).ToLowerInvariant();
-                        if (gearText.Contains("automatic")) gearBox = GearBox.Automatic;
-                        else if (gearText.Contains("semi")) gearBox = GearBox.SemiAutomatic;
+                        // GearBox gearBox = GearBox.Manual;
+                        // var gearText = TryGetText(item, config.Selectors.GearBox).ToLowerInvariant();
+                        // if (gearText.Contains("automatic")) gearBox = GearBox.Automatic;
+                        // else if (gearText.Contains("semi")) gearBox = GearBox.SemiAutomatic;
+						var gearbox = TryGetText(item, config.Selectors.GearBox).ToLowerInvariant();
 
                         // FuelType
-                        FuelType fuelType = FuelType.Gasoline;
-                        var fuelText = TryGetText(item, config.Selectors.FuelType).ToLowerInvariant();
-                        if (fuelText.Contains("elettr") || fuelText.Contains("electric")) fuelType = FuelType.Electric;
-                        else if (fuelText.Contains("altro")) fuelType = FuelType.Other;
+                        // FuelType fuelType = FuelType.Gasoline;
+                        // var fuelText = TryGetText(item, config.Selectors.FuelType).ToLowerInvariant();
+                        // if (fuelText.Contains("elettr") || fuelText.Contains("electric")) fuelType = FuelType.Electric;
+                        // else if (fuelText.Contains("altro")) fuelType = FuelType.Other;
+						var fuelType = TryGetText(item, config.Selectors.FuelType).ToLowerInvariant();
 
                         // Post date: se è presente un selettore prova a parse, altrimenti DateTime.Now
                         DateTime postDate = DateTime.Now;
@@ -215,7 +217,7 @@ namespace DashboardMoto
                         }
 
                         // Creazione oggetto Motorbike
-                        motorbikes.Add(new Motorbike(
+                        motorbikes.Add(new MotorbikeDto(
                             0, // 0 per assegnarlo poi nel DB
                             horsePower,
                             model,
