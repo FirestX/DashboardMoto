@@ -3,7 +3,6 @@ using DashboardMoto.Entities;
 using DashboardMoto.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-using OpenQA.Selenium.Chrome;
 using Serilog;
 
 // -----------------------------------------------------------
@@ -37,8 +36,12 @@ builder.Services.AddScoped<IMotoRepository, MotoRepository>();
 
 // WebScraper service
 builder.Services.AddScoped<WebScraper>();
+builder.Services.AddScoped<MotoSeeder>();
 
 var app = builder.Build();
+
+var seeder = app.Services.CreateScope().ServiceProvider.GetRequiredService<MotoSeeder>();
+await seeder.SeedAsync();
 
 if (app.Environment.IsDevelopment())
 {
