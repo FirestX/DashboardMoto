@@ -35,16 +35,12 @@ namespace DashboardMoto
     public class WebScraper
     {
         private readonly ChromeOptions _options;
-        private readonly ChromeDriverService _service;
         private readonly ILogger<WebScraper> _logger;
         private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(3, 3); // Max 3 concurrent scrapers
 
-        public WebScraper(ILogger<WebScraper> logger, ChromeDriverService? service = null, ChromeOptions? options = null)
+        public WebScraper(ILogger<WebScraper> logger, ChromeOptions? options = null)
         {
             _logger = logger;
-            _service = service ?? ChromeDriverService.CreateDefaultService();
-            _service.HideCommandPromptWindow = true;
-            _service.SuppressInitialDiagnosticInformation = true;
 
             _options = options ?? new ChromeOptions();
             // default options comode per headless scraping; il chiamante può fornire diverse options se vuole
@@ -58,7 +54,7 @@ namespace DashboardMoto
         }
 
         // Metodo async con semaphore per controllare concorrenza
-        public async Task<List<Motorbike>> ScrapeAsync(ScrapeConfig config)
+        public async Task<List<MotorbikeDto>> ScrapeAsync(ScrapeConfig config)
         {
             await _semaphore.WaitAsync();
             try
@@ -73,19 +69,23 @@ namespace DashboardMoto
         }
 
         // Metodo sincrono per backward compatibility
-        public List<Motorbike> Scrape(ScrapeConfig config)
+        public List<MotorbikeDto> Scrape(ScrapeConfig config)
         {
             return ScrapeInternal(config);
         }
 
         // Metodo interno che esegue lo scraping effettivo
-        private List<Motorbike> ScrapeInternal(ScrapeConfig config)
+        private List<MotorbikeDto> ScrapeInternal(ScrapeConfig config)
         {
-            var motorbikes = new List<Motorbike>();
+            var motorbikes = new List<MotorbikeDto>();
 
             try
             {
-                using var driver = new ChromeDriver(_service, _options);
+                using var service = ChromeDriverService.CreateDefaultService();
+                service.HideCommandPromptWindow = true;
+                service.SuppressInitialDiagnosticInformation = true;
+                
+                using var driver = new ChromeDriver(service, _options);
                 driver.Navigate().GoToUrl(config.Url);
 
                 var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(config.MaxWaitSeconds));
@@ -110,14 +110,14 @@ namespace DashboardMoto
 
                         // Brand
                         string brandRaw = string.IsNullOrWhiteSpace(model) ? "" : model.Split(' ')[0];
-                        Brand finalBrand = Brand.Other;
+                        BrandDto finalBrand = BrandDto.Other;
                         if (config.Url.Contains("moto.it"))
                         {
                             brandRaw = TryGetText(item, "span.app-leaf");
                         }
                         if (!string.IsNullOrEmpty(brandRaw))
                         {
-                            if (Enum.TryParse<Brand>(brandRaw.Replace("-", "").Replace(" ", ""), true, out var parsedBrand))
+                            if (Enum.TryParse<BrandDto>(brandRaw.Replace("-", "").Replace(" ", ""), true, out var parsedBrand))
                                 finalBrand = parsedBrand;
                         }
 
@@ -186,18 +186,16 @@ namespace DashboardMoto
                         }
 
                         // Gearbox
-                        // GearBox gearBox = GearBox.Manual;
-                        // var gearText = TryGetText(item, config.Selectors.GearBox).ToLowerInvariant();
-                        // if (gearText.Contains("automatic")) gearBox = GearBox.Automatic;
-                        // else if (gearText.Contains("semi")) gearBox = GearBox.SemiAutomatic;
-						var gearbox = TryGetText(item, config.Selectors.GearBox).ToLowerInvariant();
+                        GearboxDto gearBox = GearboxDto.Manual;
+                        var gearText = TryGetText(item, config.Selectors.GearBox).ToLowerInvariant();
+                        if (gearText.Contains("automatic")) gearBox = GearboxDto.Automatic;
+                        else if (gearText.Contains("semi")) gearBox = GearboxDto.SemiAutomatic;
 
                         // FuelType
-                        // FuelType fuelType = FuelType.Gasoline;
-                        // var fuelText = TryGetText(item, config.Selectors.FuelType).ToLowerInvariant();
-                        // if (fuelText.Contains("elettr") || fuelText.Contains("electric")) fuelType = FuelType.Electric;
-                        // else if (fuelText.Contains("altro")) fuelType = FuelType.Other;
-						var fuelType = TryGetText(item, config.Selectors.FuelType).ToLowerInvariant();
+                        FuelDto fuelType = FuelDto.Gasoline;
+                        var fuelText = TryGetText(item, config.Selectors.FuelType).ToLowerInvariant();
+                        if (fuelText.Contains("elettr") || fuelText.Contains("electric")) fuelType = FuelDto.Electric;
+                        else if (fuelText.Contains("altro")) fuelType = FuelDto.Other;
 
                         // Post date: se è presente un selettore prova a parse, altrimenti DateTime.Now
                         DateTime postDate = DateTime.Now;
@@ -206,30 +204,29 @@ namespace DashboardMoto
                             postDate = parsedDate;
                         
                         // SellerId in base al sito
-                        int sellerId = 1; // default
+                        string sellerName = "AutoScout"; // default
                         if (config.Url.Contains("moto.it"))
                         {
-                            sellerId = 2;
+                            sellerName = "Moto.it";
                         }
                         else if (config.Url.Contains("mundimoto.com"))
                         {
-                            sellerId = 3;
+                            sellerName = "Mundimoto";
                         }
 
                         // Creazione oggetto Motorbike
-                        motorbikes.Add(new MotorbikeDto(
-                            0, // 0 per assegnarlo poi nel DB
-                            horsePower,
-                            model,
-                            postDate,
-                            price,
-                            mileage,
-                            location,
-                            sellerId,      
-                            finalBrand,
-                            fuelType,
-                            gearBox
-                        ));
+                        motorbikes.Add(new MotorbikeDto{
+                            HorsePower = horsePower,
+                            Model = model,
+                            PostDate = postDate,
+                            Price = price,
+                            MileageKm = mileage,
+                            Location = location,
+                            SellerName = sellerName,
+                            BrandName = finalBrand,
+                            FuelType = fuelType,
+                            GearBoxType = gearBox
+                            });
                     }
                     catch
                     {
@@ -240,7 +237,7 @@ namespace DashboardMoto
                 // se non trova nulla salva page source per debug
                 if (motorbikes.Count == 0)
                 {
-                    System.IO.File.WriteAllText("pagesource_debug.html", driver.PageSource);
+                    File.WriteAllText("pagesource_debug.html", driver.PageSource);
                 }
             }
             catch (Exception ex)
