@@ -1,5 +1,6 @@
 ﻿using DashboardMoto;
 using DashboardMoto.Entities;
+using DashboardMoto.Entities.Dtos;
 using DashboardMoto.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -64,9 +65,9 @@ app.MapGet("/motorbikes", async (IMotoRepository repository) =>
     return await repository.GetAll();
 });
 
-app.MapPost("/motorbikes/autoscout24/{nPage:int}", async (int nPage, IMotoRepository repository, WebScraper scraper) =>
+app.MapPost("/motorbikes/autoscout24/{nPage:int}", async (int nPage, IMotoRepository repository, AppDbContext dbContext, WebScraper scraper) =>
 {
-    var scrapeTasks = new List<Task<List<Motorbike>>>();
+    var scrapeTasks = new List<Task<List<MotorbikeDto>>>();
 
     for (int i = 1; i <= nPage; i++)
     {
@@ -97,15 +98,15 @@ app.MapPost("/motorbikes/autoscout24/{nPage:int}", async (int nPage, IMotoReposi
     
     Console.WriteLine($"AutoScout24 - Total found: {allMotorbikes.Count} motorbikes");
 
-    var motoUtilities = new MotoUtilities(repository);
-    // await motoUtilities.PrintInDatabase(allMotorbikes);
+    var motoUtilities = new MotoUtilities(repository, dbContext);
+    await motoUtilities.PrintInDatabase(allMotorbikes);
 
     return Results.Ok(new { totalMotorbikes = allMotorbikes.Count, pagesScraped = nPage, motorbikes = allMotorbikes });
 });
 
-app.MapPost("/motorbikes/mundimoto/{nPage:int}", async (int nPage, IMotoRepository repository, WebScraper scraper) =>
+app.MapPost("/motorbikes/mundimoto/{nPage:int}", async (int nPage, IMotoRepository repository, AppDbContext dbContext, WebScraper scraper) =>
 {
-    var scrapeTasks = new List<Task<List<Motorbike>>>();
+    var scrapeTasks = new List<Task<List<MotorbikeDto>>>();
 
     for (int i = 1; i <= nPage; i++)
     {
@@ -136,15 +137,15 @@ app.MapPost("/motorbikes/mundimoto/{nPage:int}", async (int nPage, IMotoReposito
     
     Console.WriteLine($"Mundimoto - Total found: {allMotorbikes.Count} motorbikes");
 
-    var motoUtilities = new MotoUtilities(repository);
+    var motoUtilities = new MotoUtilities(repository, dbContext);
     // await motoUtilities.PrintInDatabase(allMotorbikes);
 
     return Results.Ok(new { totalMotorbikes = allMotorbikes.Count, pagesScraped = nPage, motorbikes = allMotorbikes });
 });
 
-app.MapPost("/motorbikes/motoit/{nPage:int}", async (int nPage, IMotoRepository repository, WebScraper scraper) =>
+app.MapPost("/motorbikes/motoit/{nPage:int}", async (int nPage, IMotoRepository repository, AppDbContext dbContext, WebScraper scraper) =>
 {
-    var scrapeTasks = new List<Task<List<Motorbike>>>();
+    var scrapeTasks = new List<Task<List<MotorbikeDto>>>();
 
     for (int i = 1; i <= nPage; i++)
     {
@@ -175,7 +176,7 @@ app.MapPost("/motorbikes/motoit/{nPage:int}", async (int nPage, IMotoRepository 
     
     Console.WriteLine($"Moto.it - Total found: {allMotorbikes.Count} motorbikes");
 
-    var motoUtilities = new MotoUtilities(repository);
+    var motoUtilities = new MotoUtilities(repository, dbContext);
     // await motoUtilities.PrintInDatabase(allMotorbikes);
 
     return Results.Ok(new { totalMotorbikes = allMotorbikes.Count, pagesScraped = nPage, motorbikes = allMotorbikes });
