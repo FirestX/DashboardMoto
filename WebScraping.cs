@@ -74,15 +74,7 @@ namespace DashboardMoto
 				using var driver = new ChromeDriver(service, _options);
 				driver.Navigate().GoToUrl(config.Url);
 
-				var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(config.MaxWaitSeconds));
-				wait.IgnoreExceptionTypes(typeof(NoSuchElementException));
-
-				wait.Until(d =>
-				{
-					var els = d.FindElements(By.CssSelector(config.Selectors.ItemContainer));
-					return els != null && els.Count > 0;
-				});
-
+				WaitForElements(driver, config);
 				var items = driver.FindElements(By.CssSelector(config.Selectors.ItemContainer));
 
 				_logger.LogInformation("Trovati {ItemsCount} elementi in {Url}", items.Count, config.Url);
@@ -90,136 +82,14 @@ namespace DashboardMoto
 				{
 					try
 					{
-						// Model
-						string model = TryGetText(item, config.Selectors.Model);
-
-						// Brand
-						string brandRaw = string.IsNullOrWhiteSpace(model) ? "" : model.Split(' ')[0];
-						BrandDto finalBrand = BrandDto.Other;
-						if (config.Url.Contains("moto.it"))
-						{
-							brandRaw = TryGetText(item, "span.app-leaf");
-						}
-						if (!string.IsNullOrEmpty(brandRaw))
-						{
-							if (Enum.TryParse<BrandDto>(brandRaw.Replace("-", "").Replace(" ", ""), true, out var parsedBrand))
-								finalBrand = parsedBrand;
-						}
-
-						// Price
-						double price = ParseDouble(TryGetText(item, config.Selectors.Price), removeCurrency: true);
-
-						// Mileage
-						double mileage = ParseDouble(TryGetText(item, config.Selectors.Mileage), removeKm: true);
-						if (config.Url.Contains("moto.it") && mileage == 0)
-						{
-							string mileageText = TryGetText(item, config.Selectors.Mileage);
-
-							if (!string.IsNullOrEmpty(mileageText))
-							{
-								var match = Regex.Match(mileageText, @"(?i)\bkm\s*([\d\.,]+)");
-
-								if (match.Success)
-								{
-									string kmValue = match.Groups[1].Value.Trim();
-
-									kmValue = kmValue.Replace(".", "").Replace(",", ".");
-
-									if (double.TryParse(kmValue, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedMileage))
-									{
-										mileage = parsedMileage;
-									}
-								}
-							}
-						}
-						// Caso specifico: MUNDIMOTO.COM
-						else if (config.Url.Contains("mundimoto.com") && mileage == 0)
-						{
-							string mileageText = TryGetText(item, config.Selectors.Mileage);
-
-							if (!string.IsNullOrEmpty(mileageText))
-							{
-								var match = Regex.Match(mileageText, @"(?i)\b([\d\.,]+)\s*km\b");
-								if (match.Success)
-								{
-									string kmValue = match.Groups[1].Value.Trim();
-									kmValue = kmValue.Replace(".", "").Replace(",", ".");
-									if (double.TryParse(kmValue, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedMileage))
-									{
-										mileage = parsedMileage;
-									}
-								}
-							}
-						}
-						// Location
-						string location = TryGetText(item, config.Selectors.Location);
-
-						// HorsePower
-						double horsePower = 0;
-						var hpText = TryGetText(item, config.Selectors.HorsePower);
-						if (!string.IsNullOrWhiteSpace(hpText))
-						{
-							int start = hpText.IndexOf('(');
-							int end = hpText.IndexOf("CV", StringComparison.OrdinalIgnoreCase);
-							if (start != -1 && end != -1 && end > start)
-							{
-								var inside = hpText.Substring(start + 1, end - start - 1).Trim();
-								var parts = inside.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-								if (parts.Length > 0)
-									double.TryParse(parts[0], NumberStyles.Any, CultureInfo.InvariantCulture, out horsePower);
-							}
-						}
-
-						// Gearbox
-						GearboxDto gearBox = GearboxDto.Manual;
-						var gearText = TryGetText(item, config.Selectors.GearBox).ToLowerInvariant();
-						if (gearText.Contains("automatic")) gearBox = GearboxDto.Automatic;
-						else if (gearText.Contains("semi")) gearBox = GearboxDto.SemiAutomatic;
-
-						// FuelType
-						FuelDto fuelType = FuelDto.Gasoline;
-						var fuelText = TryGetText(item, config.Selectors.FuelType).ToLowerInvariant();
-						if (fuelText.Contains("elettr") || fuelText.Contains("electric")) fuelType = FuelDto.Electric;
-						else if (fuelText.Contains("altro")) fuelType = FuelDto.Other;
-
-						// Post date: se è presente un selettore prova a parse, altrimenti DateTime.Now
-						DateTime postDate = DateTime.Now;
-						var dateText = TryGetText(item, config.Selectors.PostDate);
-						if (!string.IsNullOrWhiteSpace(dateText) && DateTime.TryParse(dateText, out var parsedDate))
-							postDate = parsedDate;
-
-						// SellerId in base al sito
-						string sellerName = "AutoScout"; // default
-						if (config.Url.Contains("moto.it"))
-						{
-							sellerName = "Moto.it";
-						}
-						else if (config.Url.Contains("mundimoto.com"))
-						{
-							sellerName = "Mundimoto";
-						}
-
-						// Creazione oggetto Motorbike
-						motorbikes.Add(new MotorbikeDto
-						{
-							HorsePower = horsePower,
-							Model = model,
-							PostDate = postDate,
-							Price = price,
-							MileageKm = mileage,
-							Location = location,
-							SellerName = sellerName,
-							BrandName = finalBrand,
-							FuelType = fuelType,
-							GearBoxType = gearBox
-						});
+						var motorbike = ParseMotorbikeItem(item, config);
+						motorbikes.Add(motorbike);
 					}
 					catch
 					{
 					}
 				}
 
-				// se non trova nulla salva page source per debug
 				if (motorbikes.Count == 0)
 				{
 					File.WriteAllText("pagesource_debug.html", driver.PageSource);
@@ -231,6 +101,151 @@ namespace DashboardMoto
 			}
 
 			return motorbikes;
+		}
+
+		private static void WaitForElements(ChromeDriver driver, ScrapeConfig config)
+		{
+			var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(config.MaxWaitSeconds));
+			wait.IgnoreExceptionTypes(typeof(NoSuchElementException));
+			wait.Until(d =>
+			{
+				var els = d.FindElements(By.CssSelector(config.Selectors.ItemContainer));
+				return els != null && els.Count > 0;
+			});
+		}
+
+		private static MotorbikeDto ParseMotorbikeItem(IWebElement item, ScrapeConfig config)
+		{
+			string model = TryGetText(item, config.Selectors.Model);
+			BrandDto brand = ParseBrand(item, model, config.Url);
+			double price = ParseDouble(TryGetText(item, config.Selectors.Price), removeCurrency: true);
+			double mileage = ParseMileage(item, config);
+			string location = TryGetText(item, config.Selectors.Location);
+			double horsePower = ParseHorsePower(item, config.Selectors.HorsePower);
+			GearboxDto gearBox = ParseGearbox(item, config.Selectors.GearBox);
+			FuelDto fuelType = ParseFuelType(item, config.Selectors.FuelType);
+			DateTime postDate = ParsePostDate(item, config.Selectors.PostDate);
+			string sellerName = GetSellerName(config.Url);
+
+			return new MotorbikeDto
+			{
+				HorsePower = horsePower,
+				Model = model,
+				PostDate = postDate,
+				Price = price,
+				MileageKm = mileage,
+				Location = location,
+				SellerName = sellerName,
+				BrandName = brand,
+				FuelType = fuelType,
+				GearBoxType = gearBox
+			};
+		}
+
+		private static BrandDto ParseBrand(IWebElement item, string model, string url)
+		{
+			string brandRaw = string.IsNullOrWhiteSpace(model) ? "" : model.Split(' ')[0];
+			
+			if (url.Contains("moto.it"))
+			{
+				brandRaw = TryGetText(item, "span.app-leaf");
+			}
+
+			if (!string.IsNullOrEmpty(brandRaw))
+			{
+				if (Enum.TryParse<BrandDto>(brandRaw.Replace("-", "").Replace(" ", ""), true, out var parsedBrand))
+					return parsedBrand;
+			}
+
+			return BrandDto.Other;
+		}
+
+		private static double ParseMileage(IWebElement item, ScrapeConfig config)
+		{
+			double mileage = ParseDouble(TryGetText(item, config.Selectors.Mileage), removeKm: true);
+			
+			if (mileage == 0)
+			{
+				string mileageText = TryGetText(item, config.Selectors.Mileage);
+				if (!string.IsNullOrEmpty(mileageText))
+				{
+					string pattern = config.Url.Contains("moto.it") 
+						? @"(?i)\bkm\s*([\d\.,]+)" 
+						: @"(?i)\b([\d\.,]+)\s*km\b";
+					
+					var match = Regex.Match(mileageText, pattern);
+					if (match.Success)
+					{
+						string kmValue = match.Groups[1].Value.Trim();
+						kmValue = kmValue.Replace(".", "").Replace(",", ".");
+						if (double.TryParse(kmValue, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedMileage))
+						{
+							mileage = parsedMileage;
+						}
+					}
+				}
+			}
+
+			return mileage;
+		}
+
+		private static double ParseHorsePower(IWebElement item, string selector)
+		{
+			double horsePower = 0;
+			var hpText = TryGetText(item, selector);
+			
+			if (!string.IsNullOrWhiteSpace(hpText))
+			{
+				int start = hpText.IndexOf('(');
+				int end = hpText.IndexOf("CV", StringComparison.OrdinalIgnoreCase);
+				if (start != -1 && end != -1 && end > start)
+				{
+					var inside = hpText.Substring(start + 1, end - start - 1).Trim();
+					var parts = inside.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+					if (parts.Length > 0)
+						double.TryParse(parts[0], NumberStyles.Any, CultureInfo.InvariantCulture, out horsePower);
+				}
+			}
+
+			return horsePower;
+		}
+
+		private static GearboxDto ParseGearbox(IWebElement item, string selector)
+		{
+			var gearText = TryGetText(item, selector).ToLowerInvariant();
+			
+			if (gearText.Contains("automatic")) return GearboxDto.Automatic;
+			if (gearText.Contains("semi")) return GearboxDto.SemiAutomatic;
+			
+			return GearboxDto.Manual;
+		}
+
+		private static FuelDto ParseFuelType(IWebElement item, string selector)
+		{
+			var fuelText = TryGetText(item, selector).ToLowerInvariant();
+			
+			if (fuelText.Contains("elettr") || fuelText.Contains("electric")) return FuelDto.Electric;
+			if (fuelText.Contains("altro")) return FuelDto.Other;
+			
+			return FuelDto.Gasoline;
+		}
+
+		private static DateTime ParsePostDate(IWebElement item, string selector)
+		{
+			var dateText = TryGetText(item, selector);
+			
+			if (!string.IsNullOrWhiteSpace(dateText) && DateTime.TryParse(dateText, out var parsedDate))
+				return parsedDate;
+			
+			return DateTime.Now;
+		}
+
+		private static string GetSellerName(string url)
+		{
+			if (url.Contains("moto.it")) return "Moto.it";
+			if (url.Contains("mundimoto.com")) return "Mundimoto";
+			
+			return "AutoScout";
 		}
 
 		//legge testo o "" se non presente
