@@ -7,7 +7,7 @@ namespace DashboardMoto;
 
 public class MotoUtilities(IMotoRepository motoRepository, AppDbContext dbContext)
 {
-	public async Task PrintInDatabase(List<MotorbikeDto> motorbikesDto)
+	public async Task PrintInDatabase(List<MotorbikePostDto> motorbikesDto)
 	{
 		const int batchSize = 100;
 

@@ -47,7 +47,7 @@ namespace DashboardMoto
 			_options.AddArgument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
 		}
 
-		public async Task<List<MotorbikeDto>> ScrapeAsync(ScrapeConfig config)
+		public async Task<List<MotorbikePostDto>> ScrapeAsync(ScrapeConfig config)
 		{
 			await _semaphore.WaitAsync();
 			try
@@ -61,9 +61,9 @@ namespace DashboardMoto
 			}
 		}
 
-		public List<MotorbikeDto> Scrape(ScrapeConfig config)
+		public List<MotorbikePostDto> Scrape(ScrapeConfig config)
 		{
-			var motorbikes = new List<MotorbikeDto>();
+			var motorbikes = new List<MotorbikePostDto>();
 
 			try
 			{
@@ -114,7 +114,7 @@ namespace DashboardMoto
 			});
 		}
 
-		private static MotorbikeDto ParseMotorbikeItem(IWebElement item, ScrapeConfig config)
+		private static MotorbikePostDto ParseMotorbikeItem(IWebElement item, ScrapeConfig config)
 		{
 			string model = TryGetText(item, config.Selectors.Model);
 			BrandDto brand = ParseBrand(item, model, config.Url);
@@ -127,7 +127,7 @@ namespace DashboardMoto
 			DateTime postDate = ParsePostDate(item, config.Selectors.PostDate);
 			string sellerName = GetSellerName(config.Url);
 
-			return new MotorbikeDto
+			return new MotorbikePostDto
 			{
 				HorsePower = horsePower,
 				Model = model,
