@@ -1,23 +1,17 @@
 ﻿using DashboardMoto;
-using DashboardMoto.Entities;
 using DashboardMoto.Entities.Dtos;
 using DashboardMoto.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Serilog;
 
-// -----------------------------------------------------------
-// CONFIGURAZIONE BASE DELL'APPLICAZIONE
-// -----------------------------------------------------------
-
 var builder = WebApplication.CreateBuilder(args);
-// Serilog
+
 builder.Host.UseSerilog((context, configuration) =>
         {
             configuration.ReadFrom.Configuration(context.Configuration);
         });
 
-// Swagger
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -27,15 +21,12 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// OpenAPI e DB Context
 builder.Services.AddOpenApi();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Repository moto
 builder.Services.AddScoped<IMotoRepository, MotoRepository>();
 
-// WebScraper service
 builder.Services.AddScoped<WebScraper>();
 builder.Services.AddScoped<MotoSeeder>();
 
@@ -55,10 +46,6 @@ app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dashboard Moto API V1");
 });
-
-// -----------------------------------------------------------
-// ENDPOINT API
-// -----------------------------------------------------------
 
 app.MapGet("/motorbikes", async (IMotoRepository repository) =>
 {
@@ -138,7 +125,7 @@ app.MapPost("/motorbikes/mundimoto/{nPage:int}", async (int nPage, IMotoReposito
     Console.WriteLine($"Mundimoto - Total found: {allMotorbikes.Count} motorbikes");
 
     var motoUtilities = new MotoUtilities(repository, dbContext);
-    // await motoUtilities.PrintInDatabase(allMotorbikes);
+    await motoUtilities.PrintInDatabase(allMotorbikes);
 
     return Results.Ok(new { totalMotorbikes = allMotorbikes.Count, pagesScraped = nPage, motorbikes = allMotorbikes });
 });
@@ -149,7 +136,7 @@ app.MapPost("/motorbikes/motoit/{nPage:int}", async (int nPage, IMotoRepository 
 
     for (int i = 1; i <= nPage; i++)
     {
-        int pageNum = i; // Capture loop variable
+        int pageNum = i; 
         var config = new ScrapeConfig
         {
             Url = $"https://www.moto.it/moto-usate/ricerca/{pageNum}?offer=&cat=sportive,super-sportive&place_rad=200",
@@ -177,7 +164,7 @@ app.MapPost("/motorbikes/motoit/{nPage:int}", async (int nPage, IMotoRepository 
     Console.WriteLine($"Moto.it - Total found: {allMotorbikes.Count} motorbikes");
 
     var motoUtilities = new MotoUtilities(repository, dbContext);
-    // await motoUtilities.PrintInDatabase(allMotorbikes);
+    await motoUtilities.PrintInDatabase(allMotorbikes);
 
     return Results.Ok(new { totalMotorbikes = allMotorbikes.Count, pagesScraped = nPage, motorbikes = allMotorbikes });
 });

@@ -3,12 +3,10 @@ using System.Text.RegularExpressions;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
-using DashboardMoto.Entities;
 using DashboardMoto.Entities.Dtos;
 
 namespace DashboardMoto
 {
-    // Config per i selettori usati dallo scraper
     public class SelectorSet
     {
         public string ItemContainer { get; set; } = "";
@@ -22,28 +20,24 @@ namespace DashboardMoto
         public string PostDate { get; set; } = "";
     }
 
-    // Config che rappresenta un sito da scansionare
     public class ScrapeConfig
     {
         public string Url { get; set; } = "";
         public SelectorSet Selectors { get; set; } = new SelectorSet();
         public int MaxWaitSeconds { get; set; } = 20;
-        // eventuali altre opzioni (es. headless true/false) possono essere aggiunte qui
     }
 
-    // Classe che esegue lo scraping a partire da ScrapeConfig
     public class WebScraper
     {
         private readonly ChromeOptions _options;
         private readonly ILogger<WebScraper> _logger;
-        private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(3, 3); // Max 3 concurrent scrapers
+        private static readonly SemaphoreSlim _semaphore = new(3, 3); 
 
         public WebScraper(ILogger<WebScraper> logger, ChromeOptions? options = null)
         {
             _logger = logger;
 
             _options = options ?? new ChromeOptions();
-            // default options comode per headless scraping; il chiamante può fornire diverse options se vuole
             _options.AddArgument("--headless=new");
             _options.AddArgument("--disable-gpu");
             _options.AddArgument("--no-sandbox");
@@ -53,14 +47,13 @@ namespace DashboardMoto
             _options.AddArgument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
         }
 
-        // Metodo async con semaphore per controllare concorrenza
         public async Task<List<MotorbikeDto>> ScrapeAsync(ScrapeConfig config)
         {
             await _semaphore.WaitAsync();
             try
             {
                 _logger.LogInformation("Starting scrape for URL: {Url}", config.Url);
-                return await Task.Run(() => ScrapeInternal(config));
+                return await Task.Run(() => Scrape(config));
             }
             finally
             {
@@ -68,14 +61,7 @@ namespace DashboardMoto
             }
         }
 
-        // Metodo sincrono per backward compatibility
         public List<MotorbikeDto> Scrape(ScrapeConfig config)
-        {
-            return ScrapeInternal(config);
-        }
-
-        // Metodo interno che esegue lo scraping effettivo
-        private List<MotorbikeDto> ScrapeInternal(ScrapeConfig config)
         {
             var motorbikes = new List<MotorbikeDto>();
 
@@ -91,7 +77,6 @@ namespace DashboardMoto
                 var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(config.MaxWaitSeconds));
                 wait.IgnoreExceptionTypes(typeof(NoSuchElementException));
 
-                // Attendi che appaia almeno un item container
                 wait.Until(d =>
                 {
                     var els = d.FindElements(By.CssSelector(config.Selectors.ItemContainer));
@@ -230,7 +215,6 @@ namespace DashboardMoto
                     }
                     catch
                     {
-                        
                     }
                 }
 
