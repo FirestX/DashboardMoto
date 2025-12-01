@@ -93,7 +93,7 @@
         {
             AvailableBrands = Motorbikes
                 .Where(m => m.Price > 0 && m.MileageKm > 0)
-                .Select(m => m.Brand.ToString())
+                .Select(m => m.BrandName.ToString())
                 .Distinct()
                 .OrderBy(b => b)
                 .ToList();
@@ -125,8 +125,8 @@
         if (Motorbikes == null || !SelectedBrands.Any()) return;
         
         var brandGroups = Motorbikes
-            .Where(m => m.Price > 0 && m.MileageKm > 0 && SelectedBrands.Contains(m.Brand.ToString()))
-            .GroupBy(m => m.Brand.ToString())
+            .Where(m => m.Price > 0 && m.MileageKm > 0 && SelectedBrands.Contains(m.BrandName.ToString()))
+            .GroupBy(m => m.BrandName.ToString())
             .OrderBy(g => g.Key)
             .ToList();
         
@@ -150,14 +150,22 @@
         foreach (var brandGroup in brandGroups)
         {
             var brandData = new double[mileagePoints.Count];
+            var maxBrandMileage = brandGroup.Max(m => m.MileageKm);
             
             for (int i = 0; i < mileagePoints.Count; i++)
             {
-                var bike = brandGroup
-                    .OrderBy(m => Math.Abs(m.MileageKm - mileagePoints[i]))
-                    .FirstOrDefault();
-                
-                brandData[i] = bike?.Price ?? 0;
+                if (mileagePoints[i] > maxBrandMileage)
+                {
+                    brandData[i] = double.NaN;
+                }
+                else
+                {
+                    var bike = brandGroup
+                        .OrderBy(m => Math.Abs(m.MileageKm - mileagePoints[i]))
+                        .FirstOrDefault();
+                    
+                    brandData[i] = bike?.Price ?? double.NaN;
+                }
             }
             
             Series.Add(new ChartSeries

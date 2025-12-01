@@ -3,7 +3,7 @@
 namespace DashboardMoto.Entities;
 
 [Index(nameof(Name), IsUnique = true)]
-public class Brand
+public class Fuel
 {
     public int Id { get; set; }
     public required string Name { get; set; }

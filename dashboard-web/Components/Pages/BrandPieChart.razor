@@ -1,0 +1,95 @@
+@page "/brand-pie-chart"
+@using Models
+@using Services
+@inject IHttpClientFactory HttpClientFactory
+@rendermode InteractiveServer
+
+<MudPaper Class="pa-4">
+    <MudText Typo="Typo.h5" GutterBottom="true">Brand Distribution</MudText>
+    
+    @if (Motorbikes is null)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        <MudText>Loading motorcycle data...</MudText>
+    }
+    else if (!Motorbikes.Any())
+    {
+        <MudAlert Severity="Severity.Info">No motorcycle data available.</MudAlert>
+    }
+    else
+    {
+        <MudChart 
+            ChartType="ChartType.Donut" 
+            InputData="@ChartData"
+            InputLabels="@ChartLabels"
+            Width="100%" 
+            Height="350px"
+            ChartOptions="@_chartOptions">
+        </MudChart>
+        
+        <MudText Typo="Typo.body2" Class="mt-2" Align="Align.Center">
+            Total Motorcycles: @Motorbikes.Count() | Brands: @ChartLabels.Length
+        </MudText>
+    }
+</MudPaper>
+
+@code {
+    [Parameter]
+    public IEnumerable<Motorbike>? Motorbikes { get; set; }
+    
+    private double[] ChartData { get; set; } = Array.Empty<double>();
+    private string[] ChartLabels { get; set; } = Array.Empty<string>();
+    
+    private ChartOptions _chartOptions = new ChartOptions
+    {
+        ChartPalette = new[]
+        {
+            "#FF6B6B", "#4ECDC4", "#45B7D1", "#FF8C42", "#C44569",
+            "#00B894", "#F97F51", "#5F27CD", "#00D2D3", "#0984E3",
+            "#6C5CE7", "#FD79A8", "#FDCB6E", "#A29BFE", "#E17055",
+            "#74B9FF", "#B2BEC3", "#636E72", "#2D3436", "#DFE6E9"
+        }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Motorbikes is null)
+        {
+            try
+            {
+                Motorbikes = await RequestService.GetMotorbikesRequest(HttpClientFactory);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading motorcycles: {ex.Message}");
+            }
+        }
+        
+        if (Motorbikes != null && Motorbikes.Any())
+        {
+            PreparePieChartData();
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Motorbikes != null && Motorbikes.Any())
+        {
+            PreparePieChartData();
+        }
+    }
+
+    private void PreparePieChartData()
+    {
+        if (Motorbikes == null) return;
+        
+        var brandCounts = Motorbikes
+            .GroupBy(m => m.BrandName)
+            .Select(g => new { Brand = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .ToList();
+        
+        ChartLabels = brandCounts.Select(x => $"{x.Brand} ({x.Count})").ToArray();
+        ChartData = brandCounts.Select(x => (double)x.Count).ToArray();
+    }
+}

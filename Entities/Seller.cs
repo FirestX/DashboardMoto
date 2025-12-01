@@ -1,8 +1,11 @@
-﻿namespace DashboardMoto.Entities;
+﻿using Microsoft.EntityFrameworkCore;
 
-public class Seller(int id, string name, string email)
+namespace DashboardMoto.Entities;
+
+[Index(nameof(Email), IsUnique = true)]
+public class Seller
 {
-    public int Id { get; set; } = id;
-    public string Name { get; set; } = name;
-    public string Email { get; set; } = email;
+    public int Id { get; set; }
+    public required string Name { get; set; }
+    public required string Email { get; set; }
 }

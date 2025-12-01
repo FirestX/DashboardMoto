@@ -1,0 +1,93 @@
+@page "/gearbox-pie-chart"
+@using Models
+@using Services
+@inject IHttpClientFactory HttpClientFactory
+@rendermode InteractiveServer
+
+<MudPaper Class="pa-4">
+    <MudText Typo="Typo.h5" GutterBottom="true">Gearbox Distribution</MudText>
+    
+    @if (Motorbikes is null)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        <MudText>Loading motorcycle data...</MudText>
+    }
+    else if (!Motorbikes.Any())
+    {
+        <MudAlert Severity="Severity.Info">No motorcycle data available.</MudAlert>
+    }
+    else
+    {
+        <MudChart 
+            ChartType="ChartType.Donut" 
+            InputData="@ChartData"
+            InputLabels="@ChartLabels"
+            Width="100%" 
+            Height="350px"
+            ChartOptions="@_chartOptions">
+        </MudChart>
+        
+        <MudText Typo="Typo.body2" Class="mt-2" Align="Align.Center">
+            Total Motorcycles: @Motorbikes.Count() | Gearbox Types: @ChartLabels.Length
+        </MudText>
+    }
+</MudPaper>
+
+@code {
+    [Parameter]
+    public IEnumerable<Motorbike>? Motorbikes { get; set; }
+    
+    private double[] ChartData { get; set; } = Array.Empty<double>();
+    private string[] ChartLabels { get; set; } = Array.Empty<string>();
+    
+    private ChartOptions _chartOptions = new ChartOptions
+    {
+        ChartPalette = new[]
+        {
+            "#2196F3", "#FF9800", "#4CAF50", "#9C27B0", "#F44336"
+        }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Motorbikes is null)
+        {
+            try
+            {
+                Motorbikes = await RequestService.GetMotorbikesRequest(HttpClientFactory);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading motorcycles: {ex.Message}");
+            }
+        }
+        
+        if (Motorbikes != null && Motorbikes.Any())
+        {
+            PreparePieChartData();
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Motorbikes != null && Motorbikes.Any())
+        {
+            PreparePieChartData();
+        }
+    }
+
+    private void PreparePieChartData()
+    {
+        if (Motorbikes == null) return;
+        
+        var gearboxCounts = Motorbikes
+            .Where(m => !string.IsNullOrEmpty(m.GearBoxType))
+            .GroupBy(m => m.GearBoxType)
+            .Select(g => new { Gearbox = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .ToList();
+        
+        ChartLabels = gearboxCounts.Select(x => $"{x.Gearbox} ({x.Count})").ToArray();
+        ChartData = gearboxCounts.Select(x => (double)x.Count).ToArray();
+    }
+}

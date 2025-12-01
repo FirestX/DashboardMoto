@@ -1,169 +1,186 @@
-@page "/histogram/{MetricType}"
+﻿@page "/histogram/{MetricType}"
 @using Models
 @using Services
 @inject IHttpClientFactory HttpClientFactory
 @rendermode InteractiveServer
 
 <MudPaper Class="pa-4">
-    <MudText Typo="Typo.h5" GutterBottom="true">@GetTitle()</MudText>
-    
-    @if (Motorbikes is null)
-    {
-        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-        <MudText>Loading motorcycle data...</MudText>
-    }
-    else if (!Motorbikes.Any())
-    {
-        <MudAlert Severity="Severity.Info">No motorcycle data available.</MudAlert>
-    }
-    else
-    {
-        <MudChart 
-            ChartType="ChartType.Bar" 
-            ChartSeries="@Series" 
-            XAxisLabels="@XAxisLabels"
-            Width="100%" 
-            Height="350px"
-            ChartOptions="@_chartOptions">
-        </MudChart>
-        
-        <MudText Typo="Typo.body2" Class="mt-2">
-            @GetSummaryText()
-        </MudText>
-    }
+	<MudText Typo="Typo.h5" GutterBottom="true">@GetTitle()</MudText>
+
+	@if (Motorbikes is null)
+	{
+		<MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+		<MudText>Loading motorcycle data...</MudText>
+	}
+	else if (!Motorbikes.Any())
+	{
+		<MudAlert Severity="Severity.Info">No motorcycle data available.</MudAlert>
+	}
+	else
+	{
+		<MudChart ChartType="ChartType.Bar" ChartSeries="@Series" XAxisLabels="@XAxisLabels" Width="100%" Height="350px"
+			ChartOptions="@_chartOptions" AxisChartOptions="@_axisOptions">
+		</MudChart>
+
+		<MudText Typo="Typo.body2" Class="mt-2" Align="Align.Center">
+			<strong>@GetXAxisLabel()</strong>
+		</MudText>
+
+		<MudText Typo="Typo.body2" Class="mt-2">
+			@GetSummaryText()
+		</MudText>
+	}
 </MudPaper>
 
 @code {
-    [Parameter]
-    public string MetricType { get; set; } = "price";
+	[Parameter]
+	public string MetricType { get; set; } = "price";
 
-    [Parameter]
-    public IEnumerable<Motorbike>? Motorbikes { get; set; }
-    private List<ChartSeries> Series { get; set; } = new();
-    private string[] XAxisLabels { get; set; } = Array.Empty<string>();
-    private double MinValue { get; set; }
-    private double MaxValue { get; set; }
-    private double AvgValue { get; set; }
-    
-    private ChartOptions _chartOptions = new ChartOptions
-    {
-        YAxisTicks = 1,
-        YAxisLines = true,
-        XAxisLines = false,
-        ChartPalette = new[] { "#2196F3", "#1976D2", "#0D47A1" }
-    };
+	[Parameter]
+	public IEnumerable<Motorbike>? Motorbikes { get; set; }
+	private List<ChartSeries> Series { get; set; } = new();
+	private string[] XAxisLabels { get; set; } = Array.Empty<string>();
+	private double MinValue { get; set; }
+	private double MaxValue { get; set; }
+	private double AvgValue { get; set; }
 
-    protected override async Task OnInitializedAsync()
-    {
-        if (Motorbikes is null)
-        {
-            try
-            {
-                Motorbikes = await RequestService.GetMotorbikesRequest(HttpClientFactory);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error loading motorcycles: {ex.Message}");
-            }
-        }
-        
-        if (Motorbikes != null && Motorbikes.Any())
-        {
-            PrepareHistogramData();
-        }
-    }
+	private ChartOptions _chartOptions = new ChartOptions
+	{
+		YAxisTicks = 1,
+		YAxisLines = true,
+		XAxisLines = false,
+		ChartPalette = new[] { "#2196F3", "#1976D2", "#0D47A1" }
+	};
+	private AxisChartOptions _axisOptions = new AxisChartOptions
+	{
+		XAxisLabelRotation = -90
+	};
 
-    protected override void OnParametersSet()
-    {
-        if (Motorbikes != null && Motorbikes.Any())
-        {
-            PrepareHistogramData();
-        }
-    }
+	protected override async Task OnInitializedAsync()
+	{
+		if (Motorbikes is null)
+		{
+			try
+			{
+				Motorbikes = await RequestService.GetMotorbikesRequest(HttpClientFactory);
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"Error loading motorcycles: {ex.Message}");
+			}
+		}
 
-    private void PrepareHistogramData()
-    {
-        if (Motorbikes == null) return;
-        
-        var values = GetMetricValues().Where(v => v > 0).ToList();
-        
-        if (!values.Any()) return;
-        
-        MinValue = values.Min();
-        MaxValue = values.Max();
-        AvgValue = values.Average();
-        
-        int binCount = 10;
-        double binSize = (MaxValue - MinValue) / binCount;
-        
-        var bins = new List<(string Label, int Count)>();
-        
-        for (int i = 0; i < binCount; i++)
-        {
-            double binStart = MinValue + (i * binSize);
-            double binEnd = binStart + binSize;
-            
-            int count = values.Count(v => v >= binStart && (i == binCount - 1 ? v <= binEnd : v < binEnd));
-            
-            string label = FormatBinLabel(binStart, binEnd);
-            bins.Add((label, count));
-        }
-        
-        XAxisLabels = bins.Select(b => b.Label).ToArray();
-        
-        Series = new List<ChartSeries>
-        {
-            new ChartSeries
-            {
-                Name = "Number of Motorcycles",
-                Data = bins.Select(b => (double)b.Count).ToArray()
-            }
-        };
-    }
+		if (Motorbikes != null && Motorbikes.Any())
+		{
+			PrepareHistogramData();
+		}
+	}
 
-    private IEnumerable<double> GetMetricValues()
-    {
-        return MetricType?.ToLower() switch
-        {
-            "price" => Motorbikes!.Select(m => m.Price),
-            "horsepower" => Motorbikes!.Where(m => m.HorsePower.HasValue).Select(m => m.HorsePower!.Value),
-            "mileage" => Motorbikes!.Select(m => m.MileageKm),
-            _ => Motorbikes!.Select(m => m.Price)
-        };
-    }
+	protected override void OnParametersSet()
+	{
+		if (Motorbikes != null && Motorbikes.Any())
+		{
+			PrepareHistogramData();
+		}
+	}
 
-    private string FormatBinLabel(double start, double end)
-    {
-        return MetricType?.ToLower() switch
-        {
-            "price" => $"€{(start / 1000):F0}k-{(end / 1000):F0}k",
-            "horsepower" => $"{start:F0}-{end:F0} HP",
-            "mileage" => $"{(start / 1000):F0}k-{(end / 1000):F0}k km",
-            _ => $"{start:F0}-{end:F0}"
-        };
-    }
+	private void PrepareHistogramData()
+	{
+		if (Motorbikes == null) return;
 
-    private string GetTitle()
-    {
-        return MetricType?.ToLower() switch
-        {
-            "price" => "Motorcycle Price Distribution",
-            "horsepower" => "Motorcycle Horse Power Distribution",
-            "mileage" => "Motorcycle Mileage Distribution",
-            _ => "Motorcycle Distribution"
-        };
-    }
+		var values = GetMetricValues().Where(v => v > 0).ToList();
 
-    private string GetSummaryText()
-    {
-        var total = Motorbikes?.Count() ?? 0;
-        
-        return MetricType?.ToLower() switch
-        {
-            "price" => $"Total Motorcycles: {total} | Price Range: €{MinValue:N0} - €{MaxValue:N0} | Average Price: €{AvgValue:N0}",
-            "horsepower" => $"Total Motorcycles: {total} | Horse Power Range: {MinValue:F0} - {MaxValue:F0} HP | Average: {AvgValue:F0} HP",
-            "mileage" => $"Total Motorcycles: {total} | Mileage Range: {MinValue:N0} - {MaxValue:N0} km | Average: {AvgValue:N0} km",
-            _ => $"Total Motorcycles: {total}"
-        };
-    }
+		if (!values.Any()) return;
+
+		MinValue = values.Min();
+		MaxValue = values.Max();
+		AvgValue = values.Average();
+
+		int binCount = 20;
+		double binSize = (MaxValue - MinValue) / binCount;
+
+		var bins = new List<(string Label, int Count)>();
+
+		for (int i = 0; i < binCount; i++)
+		{
+			double binStart = MinValue + (i * binSize);
+			double binEnd = binStart + binSize;
+
+			int count = values.Count(v => v >= binStart && (i == binCount - 1 ? v <= binEnd : v < binEnd));
+
+			if (count > 0)
+			{
+				string label = FormatBinLabel(binStart, binEnd);
+				bins.Add((label, count));
+			}
+		}
+
+		XAxisLabels = bins.Select(b => b.Label).ToArray();
+
+		Series = new List<ChartSeries>
+{
+new ChartSeries
+{
+Name = "Number of Motorcycles",
+Data = bins.Select(b => (double)b.Count).ToArray()
+}
+};
+	}
+
+	private IEnumerable<double> GetMetricValues()
+	{
+		return MetricType?.ToLower() switch
+		{
+			"price" => Motorbikes!.Select(m => m.Price),
+			"horsepower" => Motorbikes!.Where(m => m.HorsePower.HasValue).Select(m => m.HorsePower!.Value),
+			"mileage" => Motorbikes!.Select(m => m.MileageKm),
+			_ => Motorbikes!.Select(m => m.Price)
+		};
+	}
+
+	private string FormatBinLabel(double start, double end)
+	{
+		return MetricType?.ToLower() switch
+		{
+			"price" => $"€{(start / 1000):F0}k-{(end / 1000):F0}k",
+			"horsepower" => $"{start:F0}-{end:F0}",
+			"mileage" => $"{(start / 1000):F0}k-{(end / 1000):F0}k",
+			_ => $"{start:F0}-{end:F0}"
+		};
+	}
+
+	private string GetXAxisLabel()
+	{
+		return MetricType?.ToLower() switch
+		{
+			"price" => "Price (EUR)",
+			"horsepower" => "Horse Power (HP)",
+			"mileage" => "Mileage (km)",
+			_ => ""
+		};
+	}
+
+	private string GetTitle()
+	{
+		return MetricType?.ToLower() switch
+		{
+			"price" => "Motorcycle Price Distribution",
+			"horsepower" => "Motorcycle Horse Power Distribution",
+			"mileage" => "Motorcycle Mileage Distribution",
+			_ => "Motorcycle Distribution"
+		};
+	}
+
+	private string GetSummaryText()
+	{
+		var total = Motorbikes?.Count() ?? 0;
+
+		return MetricType?.ToLower() switch
+		{
+			"price" => $"Total Motorcycles: {total} | Price Range: €{MinValue:N0} - €{MaxValue:N0} | Average Price: €{AvgValue:N0}",
+			"horsepower" => $"Total Motorcycles: {total} | Horse Power Range: {MinValue:F0} - {MaxValue:F0} HP | Average: {AvgValue:F0} HP",
+			"mileage" => $"Total Motorcycles: {total} | Mileage Range: {MinValue:N0} - {MaxValue:N0} km | Average: {AvgValue:N0} km",
+			_ => $"Total Motorcycles: {total}"
+		};
+	}
 }
