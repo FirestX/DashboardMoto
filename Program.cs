@@ -49,12 +49,27 @@ app.UseSwaggerUI(c =>
 
 app.MapGet("/motorbikes", async (IMotoRepository repository) =>
 {
-	return await repository.GetAll();
+	var motorbikes = await repository.GetAll();
+	var dtos = motorbikes.Select(m => new MotorbikeGetDto
+	{
+		HorsePower = m.HorsePower,
+		Model = m.Model,
+		PostDate = m.PostDate,
+		Price = m.Price,
+		MileageKm = m.MileageKm,
+		Location = m.Location,
+		GearBoxType = m.Gearbox?.Name,
+		BrandName = m.Brand.Name,
+		FuelType = m.Fuel?.Name,
+		SellerName = m.Seller.Name
+	}).ToList();
+	
+	return dtos;
 });
 
 app.MapPost("/motorbikes/autoscout24/{nPage:int}", async (int nPage, IMotoRepository repository, AppDbContext dbContext, WebScraper scraper) =>
 {
-	var scrapeTasks = new List<Task<List<MotorbikeDto>>>();
+	var scrapeTasks = new List<Task<List<MotorbikePostDto>>>();
 
 	for (int i = 1; i <= nPage; i++)
 	{
@@ -93,7 +108,7 @@ app.MapPost("/motorbikes/autoscout24/{nPage:int}", async (int nPage, IMotoReposi
 
 app.MapPost("/motorbikes/mundimoto/{nPage:int}", async (int nPage, IMotoRepository repository, AppDbContext dbContext, WebScraper scraper) =>
 {
-	var scrapeTasks = new List<Task<List<MotorbikeDto>>>();
+	var scrapeTasks = new List<Task<List<MotorbikePostDto>>>();
 
 	for (int i = 1; i <= nPage; i++)
 	{
@@ -132,7 +147,7 @@ app.MapPost("/motorbikes/mundimoto/{nPage:int}", async (int nPage, IMotoReposito
 
 app.MapPost("/motorbikes/motoit/{nPage:int}", async (int nPage, IMotoRepository repository, AppDbContext dbContext, WebScraper scraper) =>
 {
-	var scrapeTasks = new List<Task<List<MotorbikeDto>>>();
+	var scrapeTasks = new List<Task<List<MotorbikePostDto>>>();
 
 	for (int i = 1; i <= nPage; i++)
 	{
