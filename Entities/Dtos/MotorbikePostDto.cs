@@ -1,6 +1,6 @@
 ﻿namespace DashboardMoto.Entities.Dtos;
 
-public class MotorbikeDto
+public class MotorbikePostDto
 {
 	public double? HorsePower { get; set; }
 	public required string Model { get; set; }
