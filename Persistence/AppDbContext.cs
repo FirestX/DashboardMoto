@@ -18,5 +18,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 			.WithMany()
 			.HasForeignKey(m => m.SellerId)
 			.OnDelete(DeleteBehavior.Restrict);
+
+		modelBuilder.Entity<Motorbike>()
+			.HasOne(m => m.Brand)
+			.WithMany(b => b.Motorbikes)
+			.HasForeignKey(m => m.BrandId)
+			.OnDelete(DeleteBehavior.Restrict);
+
+		modelBuilder.Entity<Motorbike>()
+			.HasOne(m => m.Fuel)
+			.WithMany(f => f.Motorbikes)
+			.HasForeignKey(m => m.FuelId)
+			.OnDelete(DeleteBehavior.Restrict);
+
+		modelBuilder.Entity<Motorbike>()
+			.HasOne(m => m.Gearbox)
+			.WithMany(g => g.Motorbikes)
+			.HasForeignKey(m => m.GearBoxId)
+			.OnDelete(DeleteBehavior.Restrict);
 	}
 }
