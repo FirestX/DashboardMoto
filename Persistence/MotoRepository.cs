@@ -18,6 +18,11 @@ public class MotoRepository(AppDbContext dbContext) : IMotoRepository
 	}
 	public async Task<List<Motorbike>> GetAll()
 	{
-		return await dbContext.Motorbikes.ToListAsync();
+		return await dbContext.Motorbikes
+			.Include(m => m.Brand)
+			.Include(m => m.Fuel)
+			.Include(m => m.Gearbox)
+			.Include(m => m.Seller)
+			.ToListAsync();
 	}
 }
